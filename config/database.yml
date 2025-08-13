@@ -1,10 +1,11 @@
-# config/database.yml: Updated with explicit username and password (free, open-source).
+# config/database.yml: Using psb_user with password and host (free, open-source).
 default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  username: psb_user  # Added explicit username.
-  password: psb_admin 
+  username: psb_user
+  password: testpassword  # This is the password to match.
+  host: localhost  # Forces TCP to avoid socket issues.
 
 development:
   <<: *default
