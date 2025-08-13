@@ -1,7 +1,10 @@
+# config/database.yml: Updated with explicit username and password (free, open-source).
 default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  username: psb_user  # Added explicit username.
+  password: psb_admin 
 
 development:
   <<: *default
