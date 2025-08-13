@@ -1,0 +1,15 @@
+# .gitignore: Keeps unnecessary files out of Git (free open-source practice).
+/log/*
+/tmp/*
+/public/system/*
+/public/uploads/*
+/public/packs/*
+/node_modules/
+*/node_modules/
+/vendor/bundle/
+/.yardoc/
+/.byebug_history
+/.env
+*.sqlite3
+/db/*.sqlite3
+/storage/*
