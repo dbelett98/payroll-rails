@@ -1,0 +1,26 @@
+<h2>Staff Dashboard</h2>
+
+<%= form_with url: dashboard_path, method: :get, local: true do |form| %>
+  <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: 'mb-4 p-2 border' %>
+<% end %>
+
+<table class="w-full border">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Hours</th>
+      <th>Salary</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @employees.each do |employee| %>
+      <tr>
+        <td><%= employee.name %></td>
+        <td><%= employee.hours_worked || 0 %></td>
+        <td><%= employee.salary || 0 %></td>
+        <td><button class="bg-blue-500 text-white p-1">Edit</button></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
