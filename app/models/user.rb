@@ -5,9 +5,6 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
 
-  # Use has_secure_password for existing password_digest
-  has_secure_password
-
   # Custom role attribute
   validates :role, presence: true
 end
