@@ -60,3 +60,5 @@ group :development do
   # gem "spring"
 end
 
+# Add Devise for authentication
+gem 'devise'
