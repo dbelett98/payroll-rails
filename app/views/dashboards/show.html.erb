@@ -1,33 +1,49 @@
-<div class="container mx-auto p-4">
-  <h2 class="text-2xl font-bold mb-4 text-gray-800">Staff Dashboard</h2>
-
-  <%= form_with url: dashboard_path, method: :get, local: true, class: "mb-4" do |form| %>
-    <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "p-2 border rounded-lg w-full max-w-xs" %>
-  <% end %>
-
-  <div class="bg-white shadow-md rounded-lg overflow-hidden">
-    <table class="w-full">
-      <thead class="bg-gray-200">
-        <tr>
-          <th class="p-2 text-left text-gray-600">Name</th>
-          <th class="p-2 text-left text-gray-600">Hours</th>
-          <th class="p-2 text-left text-gray-600">Salary</th>
-          <th class="p-2 text-left text-gray-600">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @employees.each do |employee| %>
-          <tr class="border-t">
-            <td class="p-2"><%= employee.name %></td>
-            <td class="p-2"><%= employee.hours_worked || 0 %></td>
-            <td class="p-2"><%= number_to_currency(employee.salary || 0) %></td>
-            <td class="p-2"><button class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">Edit</button></td>
+<div class="min-h-screen bg-gray-100">
+  <div class="container mx-auto p-6">
+    <h2 class="text-3xl font-bold mb-6 text-blue-800">PSB Payroll Dashboard</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-2 text-gray-800">Client Overview</h3>
+        <p class="text-gray-600">Coming Soon: Client stats and summary.</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-2 text-gray-800">Payroll Status</h3>
+        <p class="text-gray-600">Coming Soon: Current payroll run status.</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-2 text-gray-800">Reports</h3>
+        <p class="text-gray-600">Coming Soon: Generate payroll reports.</p>
+      </div>
+    </div>
+    <div class="mb-6">
+      <%= form_with url: dashboard_path, method: :get, local: true do |form| %>
+        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      <% end %>
+    </div>
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-blue-100">
+          <tr>
+            <th class="p-3 text-left text-blue-800">Name</th>
+            <th class="p-3 text-left text-blue-800">Hours</th>
+            <th class="p-3 text-left text-blue-800">Salary</th>
+            <th class="p-3 text-left text-blue-800">Actions</th>
           </tr>
-        <% end %>
-        <% if @employees.empty? %>
-          <tr><td colspan="4" class="p-2 text-center text-gray-500">No employees available</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% @employees.each do |employee| %>
+            <tr class="border-b hover:bg-gray-50">
+              <td class="p-3"><%= employee.name %></td>
+              <td class="p-3"><%= employee.hours_worked || 0 %></td>
+              <td class="p-3"><%= number_to_currency(employee.salary || 0) %></td>
+              <td class="p-3"><button class="bg-teal-500 text-white px-3 py-1 rounded hover:bg-teal-600">Edit</button></td>
+            </tr>
+          <% end %>
+          <% if @employees.empty? %>
+            <tr><td colspan="4" class="p-3 text-center text-gray-500">No employees available</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
