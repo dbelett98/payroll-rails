@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-100">
+<div class="min-h-screen bg-gray-50">
   <div class="container mx-auto p-6">
     <h2 class="text-3xl font-bold mb-6 text-blue-800">PSB Payroll Dashboard</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -14,20 +14,28 @@
         <h3 class="text-xl font-bold mb-2 text-gray-800">Reports</h3>
         <p class="text-gray-600">Coming Soon: Generate payroll reports.</p>
       </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-2 text-gray-800">Settings</h3>
+        <p class="text-gray-600">Coming Soon: Manage user settings.</p>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-2 text-gray-800">Notifications</h3>
+        <p class="text-gray-600">Coming Soon: View alerts and messages.</p>
+      </div>
     </div>
     <div class="mb-6">
-      <%= form_with url: dashboard_path, method: :get, local: true do |form| %>
-        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      <%= form_with url: dashboard_path, method: :get, local: true, class: "flex items-center" do |form| %>
+        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 w-full max-w-xs" %>
       <% end %>
     </div>
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-      <table class="w-full">
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+      <table class="w-full text-left">
         <thead class="bg-blue-100">
           <tr>
-            <th class="p-3 text-left text-blue-800">Name</th>
-            <th class="p-3 text-left text-blue-800">Hours</th>
-            <th class="p-3 text-left text-blue-800">Salary</th>
-            <th class="p-3 text-left text-blue-800">Actions</th>
+            <th class="p-3 text-left text-blue-800 font-medium">Name</th>
+            <th class="p-3 text-left text-blue-800 font-medium">Hours</th>
+            <th class="p-3 text-left text-blue-800 font-medium">Salary</th>
+            <th class="p-3 text-left text-blue-800 font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
