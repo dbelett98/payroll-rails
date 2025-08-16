@@ -4,17 +4,17 @@
     <p class="text-gray-300 mb-6">Welcome to Secure Payroll Management</p>
     <%= form_for(resource, as: resource_name, url: session_path(resource_name), class: "space-y-4") do |f| %>
       <div class="mb-4">
-        <%= f.label :email, class="block text-gray-200 font-medium mb-2" %>
-        <%= f.email_field :email, autofocus: true, autocomplete: "email", class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-200" %>
+        <%= f.label :email, class: "block text-gray-200 font-medium mb-2" %>
+        <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-200" %>
       </div>
       <div class="mb-6">
-        <%= f.label :password, class="block text-gray-200 font-medium mb-2" %>
-        <%= f.password_field :password, autocomplete: "current-password", class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-200" %>
+        <%= f.label :password, class: "block text-gray-200 font-medium mb-2" %>
+        <%= f.password_field :password, autocomplete: "current-password", class: "w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-200" %>
       </div>
       <div class="mb-4">
-        <%= f.submit "Log In", class="w-full bg-blue-800 text-white p-3 rounded-lg hover:bg-blue-900 transition duration-200" %>
+        <%= f.submit "Log In", class: "w-full bg-blue-800 text-white p-3 rounded-lg hover:bg-blue-900 transition duration-200" %>
       </div>
     <% end %>
-    <%= link_to "Forgot Password?", new_user_password_path, class="text-yellow-400 hover:underline block mt-2" %>
+    <%= link_to "Forgot Password?", new_user_password_path, class: "text-yellow-400 hover:underline block mt-2" %>
   </div>
 </div>
