@@ -1,29 +1,29 @@
-<div class="min-h-screen bg-gray-50">
+<div class="dashboard-container">
   <div class="container mx-auto p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-3xl font-bold text-purple-600">PSB Payroll Dashboard</h2>
-      <div class="bg-white p-3 rounded-lg shadow-md">
+    <div class="dashboard-header">
+      <h2 class="text-3xl font-bold text-psb-purple">PSB Payroll Dashboard</h2>
+      <div class="dashboard-card">
         <span class="text-gray-600">Profile: <%= current_user.email %></span>
       </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-      <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500">
+      <div class="dashboard-card blue">
         <h3 class="text-xl font-bold mb-2 text-gray-800">Client Overview</h3>
         <p class="text-gray-600">Coming Soon: Client stats and summary.</p>
       </div>
-      <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500">
+      <div class="dashboard-card purple">
         <h3 class="text-xl font-bold mb-2 text-gray-800">Payroll Status</h3>
         <p class="text-gray-600">Coming Soon: Current payroll run status.</p>
       </div>
-      <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-yellow-500">
+      <div class="dashboard-card yellow">
         <h3 class="text-xl font-bold mb-2 text-gray-800">Reports</h3>
         <p class="text-gray-600">Coming Soon: Generate payroll reports.</p>
       </div>
-      <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-teal-500">
+      <div class="dashboard-card teal">
         <h3 class="text-xl font-bold mb-2 text-gray-800">Settings</h3>
         <p class="text-gray-600">Coming Soon: Manage user settings.</p>
       </div>
-      <div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500">
+      <div class="dashboard-card blue">
         <h3 class="text-xl font-bold mb-2 text-gray-800">Notifications</h3>
         <p class="text-gray-600">Coming Soon: View alerts and messages.</p>
       </div>
@@ -31,17 +31,17 @@
     <div class="mb-6">
       <%= form_with url: dashboard_path, method: :get, local: true, class: "flex items-center" do |form| %>
         <%= form.label :client_id, "Select Client", class: "mr-4 text-gray-700 font-medium" %>
-        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-full max-w-xs" %>
+        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "dashboard-select" %>
       <% end %>
     </div>
-    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+    <div class="dashboard-table">
       <table class="w-full text-left">
-        <thead class="bg-blue-100">
+        <thead>
           <tr>
-            <th class="p-3 text-left text-blue-800 font-medium">Name</th>
-            <th class="p-3 text-left text-blue-800 font-medium">Hours</th>
-            <th class="p-3 text-left text-blue-800 font-medium">Salary</th>
-            <th class="p-3 text-left text-blue-800 font-medium">Actions</th>
+            <th class="p-3 text-left text-psb-blue font-medium">Name</th>
+            <th class="p-3 text-left text-psb-blue font-medium">Hours</th>
+            <th class="p-3 text-left text-psb-blue font-medium">Salary</th>
+            <th class="p-3 text-left text-psb-blue font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -50,7 +50,7 @@
               <td class="p-3"><%= employee.name %></td>
               <td class="p-3"><%= employee.hours_worked || 0 %></td>
               <td class="p-3"><%= number_to_currency(employee.salary || 0) %></td>
-              <td class="p-3"><button class="bg-teal-500 text-white px-3 py-1 rounded hover:bg-teal-600">Edit</button></td>
+              <td class="p-3"><button class="action-button">Edit</button></td>
             </tr>
           <% end %>
           <% if @employees.empty? %>

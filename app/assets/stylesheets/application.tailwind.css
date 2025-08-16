@@ -1,3 +1,76 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+/* Login Page Styles */
+.login-container {
+  @apply min-h-screen bg-psb-blue flex items-center justify-center;
+}
+.login-form {
+  @apply bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md text-center;
+}
+.login-form h1 {
+  @apply text-4xl font-bold text-psb-purple mb-4;
+}
+.login-form p {
+  @apply text-gray-300 mb-6;
+}
+.login-form .form-group {
+  @apply mb-4;
+}
+.login-form .form-input {
+  @apply w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-psb-yellow transition duration-200;
+}
+.login-form .form-label {
+  @apply block text-gray-200 font-medium mb-2;
+}
+.login-form .form-submit {
+  @apply w-full bg-psb-blue text-white p-3 rounded-lg hover:bg-blue-900 transition duration-200;
+}
+.login-form .forgot-password {
+  @apply text-psb-yellow hover:underline block mt-2;
+}
+
+/* Dashboard Styles */
+.dashboard-container {
+  @apply min-h-screen bg-gray-50;
+}
+.dashboard-header {
+  @apply flex justify-between items-center mb-6;
+}
+.dashboard-card {
+  @apply bg-white p-4 rounded-lg shadow-md;
+}
+.dashboard-card.blue {
+  @apply border-l-4 border-psb-blue;
+}
+.dashboard-card.purple {
+  @apply border-l-4 border-psb-purple;
+}
+.dashboard-card.yellow {
+  @apply border-l-4 border-psb-yellow;
+}
+.dashboard-card.teal {
+  @apply border-l-4 border-psb-teal;
+}
+.dashboard-table {
+  @apply bg-white shadow-md rounded-lg overflow-hidden;
+}
+.dashboard-table thead {
+  @apply bg-blue-100;
+}
+.dashboard-table th {
+  @apply p-3 text-left text-psb-blue font-medium;
+}
+.dashboard-table td {
+  @apply p-3;
+}
+.dashboard-table tr {
+  @apply border-b hover:bg-gray-50;
+}
+.dashboard-table .action-button {
+  @apply bg-psb-teal text-white px-3 py-1 rounded hover:bg-teal-600;
+}
+.dashboard-select {
+  @apply p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-psb-purple w-full max-w-xs;
+}

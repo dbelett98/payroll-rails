@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <%= csrf_meta_tags %>
   <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-  <%= stylesheet_link_tag "https://cdn.tailwindcss.com", "data-turbo-track": "reload" %>
+  <%= stylesheet_link_tag "application.tailwind", "data-turbo-track": "reload" %>
   <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
 </head>
-<body class="bg-gray-100 font-sans text-gray-800">
-  <nav class="bg-blue-800 text-white p-4 shadow-md">
+<body>
+  <nav class="psb-blue p-4 shadow-md">
     <div class="container mx-auto flex justify-between items-center">
-      <h1 class="text-2xl font-bold">PSB Payroll</h1>
+      <h1 class="text-2xl font-bold text-white">PSB Payroll</h1>
       <% if current_user %>
         <div class="flex items-center">
-          <span class="mr-4">Welcome, <%= current_user.email %></span>
+          <span class="mr-4 text-white">Welcome, <%= current_user.email %></span>
           <%= form_with url: destroy_user_session_path, method: :delete, class: "inline" do |f| %>
-            <%= f.submit "Logout", class: "bg-purple-600 px-4 py-2 rounded hover:bg-purple-700 transition" %>
+            <%= f.submit "Logout", class: "psb-purple px-4 py-2 rounded hover:bg-purple-700 transition" %>
           <% end %>
         </div>
       <% end %>
