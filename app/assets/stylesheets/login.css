@@ -1,0 +1,27 @@
+.login-container {
+  @apply min-h-screen bg-blue-900 flex items-center justify-center;
+}
+.login-form {
+  @apply bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md text-center;
+}
+.login-form h1 {
+  @apply text-4xl font-bold text-purple-400 mb-4;
+}
+.login-form p {
+  @apply text-gray-300 mb-6;
+}
+.login-form .form-group {
+  @apply mb-4;
+}
+.login-form .form-input {
+  @apply w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-200;
+}
+.login-form .form-label {
+  @apply block text-gray-200 font-medium mb-2;
+}
+.login-form .form-submit {
+  @apply w-full bg-blue-800 text-white p-3 rounded-lg hover:bg-blue-900 transition duration-200;
+}
+.login-form .forgot-password {
+  @apply text-yellow-400 hover:underline block mt-2;
+}
