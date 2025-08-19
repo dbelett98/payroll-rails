@@ -1,10 +1,13 @@
-# app/controllers/dashboards_controller.rb: Handles dashboard for staff and admin (free open-source Rails controller).
+# app/controllers/dashboards_controller.rb: Handles dashboard with payroll (free open-source Rails controller).
 class DashboardsController < ApplicationController
-  before_action :authenticate_user!  # Free Devise auth.
+  before_action :authenticate_user!
 
   def show
-    @clients = current_user.clients  # Fetch clients for logged-in user (free ActiveRecord query, now works with association).
+    @clients = current_user.clients
     @selected_client = Client.find_by(id: params[:client_id]) if params[:client_id]
-    @employees = @selected_client ? @selected_client.employees : []  # Fetch employees for selected client (placeholder, expand in Step G).
+    @employees = @selected_client ? @selected_client.employees : []
+    @employees.each do |employee|
+      employee.pay = employee.calculate_pay  # Calculate pay for display (free)
+    end
   end
 end
