@@ -1,27 +1,71 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
 .login-container {
-  @apply min-h-screen bg-blue-900 flex items-center justify-center;
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #1E3A8A, #0F172A); /* PSB blue gradient */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
 .login-form {
-  @apply bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md text-center;
+  background-color: #F3F4F6; /* PSB gray */
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 28rem;
+  text-align: center;
 }
-.login-form h1 {
-  @apply text-4xl font-bold text-purple-400 mb-4;
+
+.login-form h2 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #6B7280; /* PSB dark gray */
+  margin-bottom: 1.5rem;
 }
-.login-form p {
-  @apply text-gray-300 mb-6;
-}
+
 .login-form .form-group {
-  @apply mb-4;
+  margin-bottom: 1rem;
 }
-.login-form .form-input {
-  @apply w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-200;
+
+.login-form label {
+  display: block;
+  color: #6B7280; /* PSB dark gray */
+  font-weight: 500;
+  margin-bottom: 0.5rem;
 }
-.login-form .form-label {
-  @apply block text-gray-200 font-medium mb-2;
+
+.login-form input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.375rem;
 }
-.login-form .form-submit {
-  @apply w-full bg-blue-800 text-white p-3 rounded-lg hover:bg-blue-900 transition duration-200;
+
+.login-form input[type="submit"] {
+  width: 100%;
+  background-color: #14B8A6; /* PSB teal */
+  color: #ffffff;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
 }
-.login-form .forgot-password {
-  @apply text-yellow-400 hover:underline block mt-2;
+
+.login-form input[type="submit"]:hover {
+  background-color: #0F766E; /* Darker teal */
+}
+
+.login-form a {
+  color: #1E3A8A; /* PSB blue */
+  text-decoration: underline;
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.login-form a:hover {
+  color: #0F172A; /* Darker blue */
 }

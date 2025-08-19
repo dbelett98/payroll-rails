@@ -5,25 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <%= csrf_meta_tags %>
   <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-  <%= stylesheet_link_tag "application.tailwind", "data-turbo-track": "reload" %>
+  <%= stylesheet_link_tag "login", "data-turbo-track": "reload" %>
   <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
 </head>
 <body>
-  <nav class="psb-blue p-4 shadow-md">
-    <div class="container mx-auto flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-white">PSB Payroll</h1>
-      <% if current_user %>
-        <div class="flex items-center">
-          <span class="mr-4 text-white">Welcome, <%= current_user.email %></span>
-          <%= form_with url: destroy_user_session_path, method: :delete, class: "inline" do |f| %>
-            <%= f.submit "Logout", class: "psb-purple px-4 py-2 rounded hover:bg-purple-700 transition" %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-  </nav>
-  <main class="container mx-auto p-6">
-    <%= yield %>
-  </main>
+  <%= yield %>
 </body>
 </html>
