@@ -1,6 +1,6 @@
 <div class="login-container">
   <div class="login-form">
-    <h2>Log In</h2>
+    <h2>PSB Payroll</h2>
     <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
       <div class="form-group">
         <%= f.label :email %>
@@ -14,6 +14,7 @@
         <%= f.submit "Log In" %>
       </div>
     <% end %>
-    <%= link_to "Forgot Password?", new_user_password_path %>
+    <%= link_to "Forgot Password?", new_user_password_path, class: "link" %>
+    <%= link_to "Sign Up", new_user_registration_path, class: "link" %>
   </div>
 </div>
