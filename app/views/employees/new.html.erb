@@ -1,0 +1,27 @@
+<h2>Add New Employee</h2>
+
+<%= form_with model: @employee, local: true do |f| %>
+  <div class="mb-4">
+    <%= f.label :name, class: "block text-gray-700" %>
+    <%= f.text_field :name, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= f.label :salary, class: "block text-gray-700" %>
+    <%= f.text_field :salary, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= f.label :hours_worked, class: "block text-gray-700" %>
+    <%= f.text_field :hours_worked, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= f.label :title, class: "block text-gray-700" %>
+    <%= f.text_field :title, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= f.label :client_id, class: "block text-gray-700" %>
+    <%= f.select :client_id, current_user.clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= f.submit "Add Employee", class: "bg-blue-500 text-white p-2 rounded hover:bg-blue-700" %>
+  </div>
+<% end %>
