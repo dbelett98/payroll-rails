@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_08_19_184956) do
+ActiveRecord::Schema[7.1].define(version: 2025_08_21_024641) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -58,6 +58,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_19_184956) do
     t.bigint "client_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "employee_id"
     t.index ["client_id"], name: "index_payroll_runs_on_client_id"
   end
 
@@ -83,4 +84,5 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_19_184956) do
   add_foreign_key "payroll_entries", "employees"
   add_foreign_key "payroll_entries", "payroll_runs"
   add_foreign_key "payroll_runs", "clients"
+  add_foreign_key "payroll_runs", "employees"
 end
