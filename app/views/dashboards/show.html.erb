@@ -1,34 +1,48 @@
-<div class="container mx-auto p-6 bg-white shadow-md rounded-lg">
-  <h2 class="text-3xl font-bold mb-6 text-gray-800">PSB Payroll Dashboard</h2>
+<div class="container mx-auto p-6 bg-white rounded shadow">
+  <h2 class="text-2xl font-bold mb-4 text-gray-800">Staff Dashboard</h2>
 
-  <%= form_with url: dashboard_path, method: :get, local: true, class: "mb-6" do |form| %>
-    <%= form.label :client_id, "Select Client", class: "block text-gray-700 font-medium mb-2" %>
-    <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "w-full p-3 border border-gray-300 rounded-lg" %>
+  <%= form_with url: dashboard_path, method: :get, local: true do |form| %>
+    <div class="flex flex-wrap gap-4 mb-6">
+      <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "p-2 border rounded flex-1" %>
+    </div>
   <% end %>
 
-  <div class="overflow-x-auto">
-    <table class="w-full text-left border-collapse">
-      <thead class="bg-gray-200">
-        <tr>
-          <th class="p-3 text-gray-700 font-medium">Name</th>
-          <th class="p-3 text-gray-700 font-medium">Hours</th>
-          <th class="p-3 text-gray-700 font-medium">Salary</th>
-          <th class="p-3 text-gray-700 font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @employees.each do |employee| %>
-          <tr class="border-b">
-            <td class="p-3"><%= employee.name %></td>
-            <td class="p-3"><%= employee.hours_worked || 0 %></td>
-            <td class="p-3"><%= number_to_currency(employee.salary || 0) %></td>
-            <td class="p-3"><button class="bg-blue-500 text-white p-1 rounded">Edit</button></td>
-          </tr>
-        <% end %>
-        <% if @employees.empty? %>
-          <tr><td colspan="4" class="p-3 text-center text-gray-500">No employees available</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    <div class="p-4 border rounded bg-gray-100">
+      <h3 class="text-lg font-bold text-gray-700">Client Overview</h3>
+      <p class="text-gray-600">Coming Soon</p>
+    </div>
+    <div class="p-4 border rounded bg-gray-100">
+      <h3 class="text-lg font-bold text-gray-700">Payroll Status</h3>
+      <p class="text-gray-600">Coming Soon</p>
+    </div>
+    <div class="p-4 border rounded bg-gray-100">
+      <h3 class="text-lg font-bold text-gray-700">Reports</h3>
+      <p class="text-gray-600">Coming Soon</p>
+    </div>
   </div>
+
+  <table class="w-full border-collapse border border-gray-300">
+    <thead class="bg-gray-200">
+      <tr>
+        <th class="p-2 text-left text-gray-700">Name</th>
+        <th class="p-2 text-left text-gray-700">Hours</th>
+        <th class="p-2 text-left text-gray-700">Salary</th>
+        <th class="p-2 text-left text-gray-700">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @employees.each do |employee| %>
+        <tr class="hover:bg-gray-100">
+          <td class="p-2 border"><%= employee.name %></td>
+          <td class="p-2 border"><%= employee.hours_worked || 0 %></td>
+          <td class="p-2 border"><%= number_to_currency(employee.salary || 0) %></td>
+          <td class="p-2 border"><button class="bg-blue-500 text-white p-1 rounded">Edit</button></td>
+        </tr>
+      <% end %>
+      <% if @employees.empty? %>
+        <tr><td colspan="4" class="p-2 text-center text-gray-500 border">No employees available</td></tr>
+      <% end %>
+    </tbody>
+  </table>
 </div>
