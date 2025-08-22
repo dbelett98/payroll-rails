@@ -1,0 +1,25 @@
+<h2>Edit Employee</h2>
+
+<%= form_with model: @employee, local: true do |form| %>
+  <div class="mb-4">
+    <%= form.label :name, class: "block text-gray-700" %>
+    <%= form.text_field :name, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= form.label :hours_worked, class: "block text-gray-700" %>
+    <%= form.text_field :hours_worked, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= form.label :salary, class: "block text-gray-700" %>
+    <%= form.text_field :salary, class: "w-full p-2 border rounded" %>
+  </div>
+  <div class="mb-4">
+    <%= form.label :title, class: "block text-gray-700" %>
+    <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: 'Select Title' }, class: "w-full p-2 border rounded" %>
+  </div>
+  <%= form.hidden_field :client_id, value: @employee.client_id %>
+  <div class="mb-4">
+    <%= form.submit "Update Employee", class: "bg-green-500 text-white p-2 rounded hover:bg-green-700" %>
+    <%= link_to "Cancel", dashboard_path(client_id: @employee.client_id), class: "bg-gray-500 text-white p-2 rounded hover:bg-gray-700 ml-2" %>
+  </div>
+<% end %>
