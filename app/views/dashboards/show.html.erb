@@ -1,36 +1,39 @@
 <div class="dashboard-container">
-  <div class="dashboard-content">
+  <div class="main-content">
     <h2 class="dashboard-header">Staff Dashboard</h2>
+    
     <%= form_with url: dashboard_path, method: :get, local: true, id: "client-select-form", class: "client-select" do |form| %>
-      <div class="flex flex-wrap gap-4 mb-6">
-        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "p-2 border rounded flex-1", id: "client-select", onchange: "this.form.submit();" %>
+      <div class="client-dropdown-container">
+        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "client-dropdown", id: "client-select", onchange: "this.form.submit();" %>
       </div>
     <% end %>
-    <h3 class="text-lg font-bold mb-2 text-gray-700">Add New Employee</h3>
+    
+    <h3 class="section-header">Add New Employee</h3>
     <%= form_with model: @new_employee, url: employees_path, local: true, class: "add-employee-form" do |form| %>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="form-grid">
         <div class="form-group">
-          <%= form.label :name, "Name", class: "block text-gray-700" %>
-          <%= form.text_field :name, class: "w-full p-2 border rounded" %>
+          <%= form.label :name, "Name", class: "form-label" %>
+          <%= form.text_field :name, class: "form-input" %>
         </div>
         <div class="form-group">
-          <%= form.label :salary, "Salary", class: "block text-gray-700" %>
-          <%= form.text_field :salary, class: "w-full p-2 border rounded" %>
+          <%= form.label :salary, "Salary", class: "form-label" %>
+          <%= form.text_field :salary, class: "form-input" %>
         </div>
         <div class="form-group">
-          <%= form.label :hours_worked, "Hours Worked", class: "block text-gray-700" %>
-          <%= form.text_field :hours_worked, class: "w-full p-2 border rounded" %>
+          <%= form.label :hours_worked, "Hours Worked", class: "form-label" %>
+          <%= form.text_field :hours_worked, class: "form-input" %>
         </div>
         <div class="form-group">
-          <%= form.label :title, "Title", class: "block text-gray-700" %>
-          <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: 'Select Title' }, class: "w-full p-2 border rounded" %>
+          <%= form.label :title, "Title", class: "form-label" %>
+          <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: 'Select Title' }, class: "form-select" %>
         </div>
         <%= form.hidden_field :client_id, value: @selected_client&.id %>
       </div>
-      <div class="mb-4">
-        <%= form.submit "Add Employee", class: "bg-blue-500 text-white p-2 rounded hover:bg-blue-700" %>
+      <div class="form-submit-container">
+        <%= form.submit "Add Employee", class: "submit-button" %>
       </div>
     <% end %>
+    
     <div class="placeholder-grid">
       <div class="placeholder-card">
         <h3>Client Overview</h3>
@@ -45,6 +48,7 @@
         <p>Coming Soon</p>
       </div>
     </div>
+    
     <table class="dashboard-table">
       <thead>
         <tr>
@@ -57,19 +61,19 @@
       </thead>
       <tbody>
         <% @employees.each do |employee| %>
-          <tr class="hover:bg-gray-100">
-            <td class="p-2 border"><%= employee.name %></td>
-            <td class="p-2 border"><%= employee.hours_worked || 0 %></td>
-            <td class="p-2 border"><%= number_to_currency(employee.salary || 0) %></td>
-            <td class="p-2 border"><%= number_to_currency(employee.calculate_pay) %></td>
-            <td class="p-2 border">
-              <%= link_to "Edit", edit_employee_path(employee), class: "action-button mr-2" %>
-              <%= button_to "Delete", employee_path(employee), method: :delete, data: { confirm: "Are you sure?" }, class: "action-button" %>
+          <tr class="table-row">
+            <td class="table-cell"><%= employee.name %></td>
+            <td class="table-cell"><%= employee.hours_worked || 0 %></td>
+            <td class="table-cell"><%= number_to_currency(employee.salary || 0) %></td>
+            <td class="table-cell"><%= number_to_currency(employee.calculate_pay) %></td>
+            <td class="table-cell">
+              <%= link_to "Edit", edit_employee_path(employee), class: "action-button edit-button" %>
+              <%= button_to "Delete", employee_path(employee), method: :delete, data: { confirm: "Are you sure?" }, class: "action-button delete-button" %>
             </td>
           </tr>
         <% end %>
         <% if @employees.empty? %>
-          <tr><td colspan="5" class="p-2 text-center text-gray-500 border">No employees available</td></tr>
+          <tr><td colspan="5" class="empty-message">No employees available</td></tr>
         <% end %>
       </tbody>
     </table>
