@@ -63,5 +63,3 @@ end
 # Add Devise for authentication
 gem 'devise'
 
-# adding tailwind
-gem "tailwindcss-rails", "~> 2.0"

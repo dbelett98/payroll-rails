@@ -17,7 +17,7 @@ body {
   width: 100%;
 }
 
-.nav-bar .flex {
+.nav-bar .nav-flex {
   display: flex;
   justify-content: space-between;
   align-items: center;
