@@ -7,9 +7,14 @@
           { prompt: "Select Client" },
           { class: "client-select", onchange: "this.form.submit();" } %>
     <% end %>
-    <button id="add-employee-btn" class="btn btn-primary">
-      <span class="btn-icon">+</span> Add New Employee
-    </button>
+    <div style="display: flex; gap: 1rem;">
+      <button id="manage-clients-btn" class="btn btn-primary">
+        <span class="btn-icon">🏢</span> Manage Clients
+      </button>
+      <button id="add-employee-btn" class="btn btn-primary">
+        <span class="btn-icon">+</span> Add New Employee
+      </button>
+    </div>
   </div>
 
   <!-- Main Dashboard Grid -->
@@ -101,7 +106,6 @@
                 <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
                 <td class="td-actions">
                   <div class="action-buttons">
-                    <!-- CHANGE #1: Edit button now uses onclick to open modal instead of link_to -->
                     <button class="btn-edit" onclick="openEditModal(<%= employee.id %>, '<%= employee.name %>', <%= employee.salary %>, <%= employee.hours_worked %>, '<%= employee.title %>')">Edit</button>
                     <%= button_to "Delete", employee_path(employee), method: :delete, 
                         data: { confirm: "Are you sure?" }, class: "btn-delete" %>
@@ -120,7 +124,7 @@
   </div>
 </div>
 
-<!-- CHANGE #2: Modal now works for both Add AND Edit Employee -->
+<!-- Employee Modal (existing) -->
 <div id="employee-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -174,8 +178,146 @@
   </div>
 </div>
 
-<!-- CHANGE #3: JavaScript that handles both Add and Edit functionality -->
+<!-- NEW: Client Management Modal -->
+<div id="client-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="client-modal-title">Manage Clients</h3>
+      <span class="modal-close" onclick="closeClientModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <!-- Client List -->
+      <div id="client-list" class="client-list">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4>Your Clients</h4>
+          <button type="button" class="btn btn-primary" onclick="showClientForm()">
+            <span class="btn-icon">+</span> Add Client
+          </button>
+        </div>
+        
+        <div class="clients-table">
+          <% @clients.each do |client| %>
+            <div class="client-row">
+              <div class="client-info">
+                <div class="client-name"><%= client.name %></div>
+                <div class="client-details">
+                  <%= client.employees.count %> employees • 
+                  <% if client.email.present? %><%= client.email %><% else %>No email<% end %>
+                </div>
+              </div>
+              <div class="client-actions">
+                <button class="btn-edit" onclick="editClient(<%= client.id %>, '<%= client.name %>', '<%= client.bank_account %>', '<%= client.ein %>', '<%= client.address %>', '<%= client.phone %>', '<%= client.email %>')">Edit</button>
+                <% if @clients.count > 1 %>
+                  <%= button_to "Delete", client_path(client), method: :delete, 
+                      data: { confirm: "Are you sure? This will delete all employees for this client." }, 
+                      class: "btn-delete", form: { style: "display: inline;" } %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Client Form -->
+      <div id="client-form" class="client-form" style="display: none;">
+        <form id="client-form-element" action="/clients" method="post">
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+          <input type="hidden" id="client-id" name="client_id" value="">
+          <input type="hidden" id="client-form-method" name="_method" value="post">
+          
+          <div class="form-group">
+            <label class="form-label">Company Name</label>
+            <input type="text" id="client-name" name="client[name]" placeholder="Enter company name" class="form-input" required>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">EIN</label>
+              <input type="text" id="client-ein" name="client[ein]" placeholder="XX-XXXXXXX" class="form-input">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" id="client-phone" name="client[phone]" placeholder="(555) 123-4567" class="form-input">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="client-email" name="client[email]" placeholder="contact@company.com" class="form-input">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Bank Account</label>
+              <input type="text" id="client-bank" name="client[bank_account]" placeholder="Account ending in XXXX" class="form-input">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <textarea id="client-address" name="client[address]" placeholder="123 Business St, City, State 12345" class="form-input" rows="3"></textarea>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-cancel" onclick="showClientList()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="client-submit-btn">Add Client</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .client-list {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .clients-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .client-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+  
+  .client-info {
+    flex: 1;
+  }
+  
+  .client-name {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+  }
+  
+  .client-details {
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+  
+  .client-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .client-form {
+    animation: slideIn 0.3s ease;
+  }
+</style>
+
 <script>
+  // Existing Employee Modal JavaScript
   document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('employee-modal');
     const addBtn = document.getElementById('add-employee-btn');
@@ -213,7 +355,7 @@
     }
   });
   
-  // Edit Employee function - this is called when Edit button is clicked
+  // Edit Employee function
   function openEditModal(id, name, salary, hours, title) {
     const modal = document.getElementById('employee-modal');
     const form = document.getElementById('employee-form');
@@ -233,5 +375,64 @@
     document.getElementById('employee-title').value = title || '';
     
     modal.style.display = 'block';
+  }
+
+  // NEW: Client Management JavaScript
+  document.getElementById('manage-clients-btn').onclick = function() {
+    document.getElementById('client-modal').style.display = 'block';
+    showClientList();
+  }
+  
+  function closeClientModal() {
+    document.getElementById('client-modal').style.display = 'none';
+  }
+  
+  function showClientList() {
+    document.getElementById('client-list').style.display = 'block';
+    document.getElementById('client-form').style.display = 'none';
+    document.getElementById('client-modal-title').textContent = 'Manage Clients';
+  }
+  
+  function showClientForm() {
+    document.getElementById('client-list').style.display = 'none';
+    document.getElementById('client-form').style.display = 'block';
+    document.getElementById('client-modal-title').textContent = 'Add New Client';
+    
+    // Reset form for new client
+    const form = document.getElementById('client-form-element');
+    form.action = '/clients';
+    document.getElementById('client-form-method').value = 'post';
+    document.getElementById('client-submit-btn').textContent = 'Add Client';
+    form.reset();
+  }
+  
+  function editClient(id, name, bankAccount, ein, address, phone, email) {
+    showClientForm();
+    document.getElementById('client-modal-title').textContent = 'Edit Client';
+    
+    const form = document.getElementById('client-form-element');
+    form.action = '/clients/' + id;
+    document.getElementById('client-form-method').value = 'patch';
+    document.getElementById('client-submit-btn').textContent = 'Update Client';
+    
+    document.getElementById('client-id').value = id;
+    document.getElementById('client-name').value = name;
+    document.getElementById('client-bank').value = bankAccount || '';
+    document.getElementById('client-ein').value = ein || '';
+    document.getElementById('client-address').value = address || '';
+    document.getElementById('client-phone').value = phone || '';
+    document.getElementById('client-email').value = email || '';
+  }
+  
+  // Close client modal when clicking outside
+  window.onclick = function(event) {
+    const clientModal = document.getElementById('client-modal');
+    const employeeModal = document.getElementById('employee-modal');
+    
+    if (event.target == clientModal) {
+      closeClientModal();
+    } else if (event.target == employeeModal) {
+      employeeModal.style.display = 'none';
+    }
   }
 </script>
