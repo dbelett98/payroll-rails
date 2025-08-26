@@ -1,81 +1,134 @@
 <div class="dashboard-container">
   <div class="dashboard-content">
-    <h2 class="dashboard-header">Staff Dashboard</h2>
-    
-    <%= form_with url: dashboard_path, method: :get, local: true, id: "client-select-form", class: "client-select" do |form| %>
-      <div class="client-dropdown-container">
-        <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: 'Select Client' }, class: "client-dropdown", id: "client-select", onchange: "this.form.submit();" %>
-      </div>
-    <% end %>
-    
-    <h3 class="section-header">Add New Employee</h3>
-    <%= form_with model: @new_employee, url: employees_path, local: true, class: "add-employee-form" do |form| %>
-      <div class="form-grid">
-        <div class="form-group">
-          <%= form.label :name, "Name", class: "form-label" %>
-          <%= form.text_field :name, class: "form-input" %>
-        </div>
-        <div class="form-group">
-          <%= form.label :salary, "Salary", class: "form-label" %>
-          <%= form.text_field :salary, class: "form-input" %>
-        </div>
-        <div class="form-group">
-          <%= form.label :hours_worked, "Hours Worked", class: "form-label" %>
-          <%= form.text_field :hours_worked, class: "form-input" %>
-        </div>
-        <div class="form-group">
-          <%= form.label :title, "Title", class: "form-label" %>
-          <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: 'Select Title' }, class: "form-select" %>
-        </div>
-        <%= form.hidden_field :client_id, value: @selected_client&.id %>
-      </div>
-      <div class="form-submit-container">
-        <%= form.submit "Add Employee", class: "submit-button" %>
-      </div>
-    <% end %>
-    
-    <div class="placeholder-grid">
-      <div class="placeholder-card">
-        <h3>Client Overview</h3>
-        <p>Coming Soon</p>
-      </div>
-      <div class="placeholder-card">
-        <h3>Payroll Status</h3>
-        <p>Coming Soon</p>
-      </div>
-      <div class="placeholder-card">
-        <h3>Reports</h3>
-        <p>Coming Soon</p>
+    <!-- Top Header -->
+    <div class="dashboard-top">
+      <h1 class="dashboard-main-header">Staff Dashboard</h1>
+      <div class="dashboard-user-info">
+        <span class="user-welcome">Welcome, <%= current_user.email %></span>
+        <%= form_with url: destroy_user_session_path, method: :delete, class: "logout-form-inline" do |f| %>
+          <%= f.submit "Logout", class: "logout-button-small" %>
+        <% end %>
       </div>
     </div>
-    
-    <table class="dashboard-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Hours</th>
-          <th>Salary</th>
-          <th>Pay</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @employees.each do |employee| %>
-          <tr class="table-row">
-            <td class="table-cell"><%= employee.name %></td>
-            <td class="table-cell"><%= employee.hours_worked || 0 %></td>
-            <td class="table-cell"><%= number_to_currency(employee.salary || 0) %></td>
-            <td class="table-cell"><%= number_to_currency(employee.calculate_pay) %></td>
-            <td class="table-cell">
-              <%= link_to "Edit", edit_employee_path(employee), class: "action-button edit-button" %>
-              <%= button_to "Delete", employee_path(employee), method: :delete, data: { confirm: "Are you sure?" }, class: "action-button delete-button" %>
-            </td>
+
+    <!-- Client Selection -->
+    <%= form_with url: dashboard_path, method: :get, local: true, id: "client-select-form", class: "client-select" do |form| %>
+      <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: '🏢 Select Client' }, class: "client-dropdown", id: "client-select", onchange: "this.form.submit();" %>
+    <% end %>
+
+    <!-- Add Employee Button -->
+    <div class="add-employee-section">
+      <button type="button" class="add-employee-btn" onclick="openModal()">
+        ✨ Add New Employee
+      </button>
+    </div>
+
+    <!-- 3-Column Sections -->
+    <div class="sections-grid">
+      <div class="section-card">
+        <h3 class="section-header">📊 Client Overview</h3>
+        <p class="section-description">Comprehensive client analytics and metrics for better insights</p>
+      </div>
+      <div class="section-card">
+        <h3 class="section-header">⚡ Payroll Status</h3>
+        <p class="section-description">Real-time payroll processing updates and status monitoring</p>
+      </div>
+      <div class="section-card">
+        <h3 class="section-header">📈 Reports</h3>
+        <p class="section-description">Advanced reporting and data insights for informed decisions</p>
+      </div>
+    </div>
+
+    <!-- Employee Table -->
+    <div class="table-section">
+      <h2 class="table-title">👥 Employee Directory</h2>
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>👤 Name</th>
+            <th>⏰ Hours</th>
+            <th>💰 Salary</th>
+            <th>💵 Pay</th>
+            <th>⚙️ Actions</th>
           </tr>
-        <% end %>
-        <% if @employees.empty? %>
-          <tr><td colspan="5" class="empty-message">No employees available</td></tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% @employees.each do |employee| %>
+            <tr class="table-row">
+              <td class="table-cell"><%= employee.name %></td>
+              <td class="table-cell"><%= employee.hours_worked || 0 %></td>
+              <td class="table-cell"><%= number_to_currency(employee.salary || 0) %></td>
+              <td class="table-cell"><%= number_to_currency(employee.calculate_pay) %></td>
+              <td class="table-cell">
+                <%= link_to "Edit", edit_employee_path(employee), class: "action-button edit-button" %>
+                <%= button_to "Delete", employee_path(employee), method: :delete, data: { confirm: "Are you sure?" }, class: "action-button delete-button" %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @employees.empty? %>
+            <tr><td colspan="5" class="empty-message">No employees available for this client</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
+
+<!-- Add Employee Modal -->
+<div id="employeeModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">✨ Add New Employee</h2>
+      <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    
+    <%= form_with model: @new_employee, url: employees_path, local: true, id: "employee-form" do |form| %>
+      <div class="form-grid">
+        <div class="form-group">
+          <%= form.label :name, "👤 Full Name", class: "form-label" %>
+          <%= form.text_field :name, class: "form-input", placeholder: "Enter employee name" %>
+        </div>
+        <div class="form-group">
+          <%= form.label :salary, "💰 Annual Salary", class: "form-label" %>
+          <%= form.text_field :salary, class: "form-input", placeholder: "50000" %>
+        </div>
+        <div class="form-group">
+          <%= form.label :hours_worked, "⏰ Hours Worked", class: "form-label" %>
+          <%= form.text_field :hours_worked, class: "form-input", placeholder: "40" %>
+        </div>
+        <div class="form-group">
+          <%= form.label :title, "🏆 Job Title", class: "form-label" %>
+          <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: '📋 Select Title' }, class: "form-select" %>
+        </div>
+      </div>
+      <%= form.hidden_field :client_id, value: @selected_client&.id %>
+      <%= form.submit "✨ Add Employee", class: "modal-submit" %>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  function openModal() {
+    document.getElementById('employeeModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeModal() {
+    document.getElementById('employeeModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+  
+  // Close modal when clicking outside
+  document.getElementById('employeeModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+  
+  // Close modal with Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+</script>
