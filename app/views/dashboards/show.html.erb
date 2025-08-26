@@ -1,134 +1,237 @@
-<div class="dashboard-container">
-  <div class="dashboard-content">
-    <!-- Top Header -->
-    <div class="dashboard-top">
-      <h1 class="dashboard-main-header">Staff Dashboard</h1>
-      <div class="dashboard-user-info">
-        <span class="user-welcome">Welcome, <%= current_user.email %></span>
-        <%= form_with url: destroy_user_session_path, method: :delete, class: "logout-form-inline" do |f| %>
-          <%= f.submit "Logout", class: "logout-button-small" %>
-        <% end %>
-      </div>
-    </div>
-
-    <!-- Client Selection -->
-    <%= form_with url: dashboard_path, method: :get, local: true, id: "client-select-form", class: "client-select" do |form| %>
-      <%= form.select :client_id, @clients.collect { |c| [c.name, c.id] }, { include_blank: '🏢 Select Client' }, class: "client-dropdown", id: "client-select", onchange: "this.form.submit();" %>
+<div class="dashboard-wrapper">
+  <!-- Client Selection Bar -->
+  <div class="client-bar">
+    <%= form_with url: dashboard_path, method: :get, local: true, class: "client-form" do |f| %>
+      <%= f.select :client_id, 
+          options_for_select(@clients.map { |c| [c.name, c.id] }, @selected_client&.id),
+          { prompt: "Select Client" },
+          { class: "client-select", onchange: "this.form.submit();" } %>
     <% end %>
+    <button id="add-employee-btn" class="btn btn-primary">
+      <span class="btn-icon">+</span> Add New Employee
+    </button>
+  </div>
 
-    <!-- Add Employee Button -->
-    <div class="add-employee-section">
-      <button type="button" class="add-employee-btn" onclick="openModal()">
-        ✨ Add New Employee
-      </button>
+  <!-- Main Dashboard Grid -->
+  <div class="dashboard-grid">
+    <!-- Client Overview - First Priority -->
+    <div class="card card-overview">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <h2>Client Overview</h2>
+      </div>
+      <div class="card-body">
+        <div class="overview-stats">
+          <div class="stat-item">
+            <span class="stat-label">Total Employees</span>
+            <span class="stat-value"><%= @employees.count %></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Total Payroll</span>
+            <span class="stat-value">$<%= number_with_delimiter(@employees.sum(&:calculate_pay).round(2)) %></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Average Salary</span>
+            <span class="stat-value">$<%= number_with_delimiter((@employees.average(:salary) || 0).round(2)) %></span>
+          </div>
+        </div>
+        <p class="overview-description">Comprehensive client analytics and metrics for better insights</p>
+      </div>
     </div>
 
-    <!-- 3-Column Sections -->
-    <div class="sections-grid">
-      <div class="section-card">
-        <h3 class="section-header">📊 Client Overview</h3>
-        <p class="section-description">Comprehensive client analytics and metrics for better insights</p>
+    <!-- Payroll Status -->
+    <div class="card card-status">
+      <div class="card-header">
+        <span class="card-icon">💰</span>
+        <h2>Payroll Status</h2>
       </div>
-      <div class="section-card">
-        <h3 class="section-header">⚡ Payroll Status</h3>
-        <p class="section-description">Real-time payroll processing updates and status monitoring</p>
-      </div>
-      <div class="section-card">
-        <h3 class="section-header">📈 Reports</h3>
-        <p class="section-description">Advanced reporting and data insights for informed decisions</p>
+      <div class="card-body">
+        <div class="status-indicator">
+          <span class="status-badge status-active">Active</span>
+          <span class="status-text">Next payroll: <%= (Date.today + 7.days).strftime("%B %d, %Y") %></span>
+        </div>
+        <p class="status-description">Real-time payroll processing updates and status monitoring</p>
       </div>
     </div>
 
-    <!-- Employee Table -->
-    <div class="table-section">
-      <h2 class="table-title">👥 Employee Directory</h2>
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>👤 Name</th>
-            <th>⏰ Hours</th>
-            <th>💰 Salary</th>
-            <th>💵 Pay</th>
-            <th>⚙️ Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @employees.each do |employee| %>
-            <tr class="table-row">
-              <td class="table-cell"><%= employee.name %></td>
-              <td class="table-cell"><%= employee.hours_worked || 0 %></td>
-              <td class="table-cell"><%= number_to_currency(employee.salary || 0) %></td>
-              <td class="table-cell"><%= number_to_currency(employee.calculate_pay) %></td>
-              <td class="table-cell">
-                <%= link_to "Edit", edit_employee_path(employee), class: "action-button edit-button" %>
-                <%= button_to "Delete", employee_path(employee), method: :delete, data: { confirm: "Are you sure?" }, class: "action-button delete-button" %>
-              </td>
-            </tr>
-          <% end %>
-          <% if @employees.empty? %>
-            <tr><td colspan="5" class="empty-message">No employees available for this client</td></tr>
-          <% end %>
-        </tbody>
-      </table>
+    <!-- Reports -->
+    <div class="card card-reports">
+      <div class="card-header">
+        <span class="card-icon">📈</span>
+        <h2>Reports</h2>
+      </div>
+      <div class="card-body">
+        <div class="report-links">
+          <a href="#" class="report-link">Payroll Register</a>
+          <a href="#" class="report-link">Tax Summary</a>
+          <a href="#" class="report-link">YTD Earnings</a>
+        </div>
+        <p class="reports-description">Advanced reporting and data insights for informed decisions</p>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Add Employee Modal -->
-<div id="employeeModal" class="modal-overlay">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 class="modal-title">✨ Add New Employee</h2>
-      <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+  <!-- Employee Directory -->
+  <div class="employee-section">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="section-icon">👥</span>
+        Employee Directory
+      </h2>
     </div>
     
-    <%= form_with model: @new_employee, url: employees_path, local: true, id: "employee-form" do |form| %>
-      <div class="form-grid">
-        <div class="form-group">
-          <%= form.label :name, "👤 Full Name", class: "form-label" %>
-          <%= form.text_field :name, class: "form-input", placeholder: "Enter employee name" %>
-        </div>
-        <div class="form-group">
-          <%= form.label :salary, "💰 Annual Salary", class: "form-label" %>
-          <%= form.text_field :salary, class: "form-input", placeholder: "50000" %>
-        </div>
-        <div class="form-group">
-          <%= form.label :hours_worked, "⏰ Hours Worked", class: "form-label" %>
-          <%= form.text_field :hours_worked, class: "form-input", placeholder: "40" %>
-        </div>
-        <div class="form-group">
-          <%= form.label :title, "🏆 Job Title", class: "form-label" %>
-          <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: '📋 Select Title' }, class: "form-select" %>
-        </div>
+    <% if @employees.any? %>
+      <div class="table-container">
+        <table class="employee-table">
+          <thead>
+            <tr>
+              <th class="th-name">Name</th>
+              <th class="th-hours">Hours</th>
+              <th class="th-salary">Salary</th>
+              <th class="th-pay">Pay</th>
+              <th class="th-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @employees.each do |employee| %>
+              <tr>
+                <td class="td-name"><%= employee.name %></td>
+                <td class="td-hours"><%= number_with_precision(employee.hours_worked, precision: 1) %></td>
+                <td class="td-salary">$<%= number_with_delimiter(employee.salary) %></td>
+                <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
+                <td class="td-actions">
+                  <div class="action-buttons">
+                    <!-- CHANGE #1: Edit button now uses onclick to open modal instead of link_to -->
+                    <button class="btn-edit" onclick="openEditModal(<%= employee.id %>, '<%= employee.name %>', <%= employee.salary %>, <%= employee.hours_worked %>, '<%= employee.title %>')">Edit</button>
+                    <%= button_to "Delete", employee_path(employee), method: :delete, 
+                        data: { confirm: "Are you sure?" }, class: "btn-delete" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
-      <%= form.hidden_field :client_id, value: @selected_client&.id %>
-      <%= form.submit "✨ Add Employee", class: "modal-submit" %>
+    <% else %>
+      <div class="empty-state">
+        <p>No employees found. Add your first employee to get started.</p>
+      </div>
     <% end %>
   </div>
 </div>
 
+<!-- CHANGE #2: Modal now works for both Add AND Edit Employee -->
+<div id="employee-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-title">Add New Employee</h3>
+      <span class="modal-close">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="employee-form" action="/employees" method="post" class="employee-form">
+        <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+        <input type="hidden" id="employee-id" name="employee_id" value="">
+        <input type="hidden" id="form-method" name="_method" value="post">
+        
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="employee-name" name="employee[name]" placeholder="Enter employee name" class="form-input" required>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Annual Salary</label>
+            <input type="number" id="employee-salary" name="employee[salary]" placeholder="$0.00" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Hours Worked</label>
+            <input type="number" id="employee-hours" name="employee[hours_worked]" step="0.1" placeholder="40" class="form-input" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Job Title</label>
+          <select id="employee-title" name="employee[title]" class="form-input">
+            <option value="">Select Title</option>
+            <option value="Manager">Manager</option>
+            <option value="Developer">Developer</option>
+            <option value="Designer">Designer</option>
+            <option value="HR">HR</option>
+            <option value="Sales">Sales</option>
+            <option value="Support">Support</option>
+          </select>
+        </div>
+        
+        <input type="hidden" name="employee[client_id]" value="<%= @selected_client&.id %>">
+        
+        <div class="form-actions">
+          <button type="button" class="btn btn-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-btn">Add Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE #3: JavaScript that handles both Add and Edit functionality -->
 <script>
-  function openModal() {
-    document.getElementById('employeeModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-  }
-  
-  function closeModal() {
-    document.getElementById('employeeModal').classList.remove('active');
-    document.body.style.overflow = 'auto';
-  }
-  
-  // Close modal when clicking outside
-  document.getElementById('employeeModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-      closeModal();
+  document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('employee-modal');
+    const addBtn = document.getElementById('add-employee-btn');
+    const closeBtn = document.querySelector('.modal-close');
+    const cancelBtn = document.querySelector('.btn-cancel');
+    const form = document.getElementById('employee-form');
+    const modalTitle = document.getElementById('modal-title');
+    const submitBtn = document.getElementById('submit-btn');
+    const formMethod = document.getElementById('form-method');
+    
+    // Add New Employee button
+    addBtn.onclick = function() {
+      modalTitle.textContent = 'Add New Employee';
+      submitBtn.textContent = 'Add Employee';
+      form.action = '/employees';
+      formMethod.value = 'post';
+      form.reset();
+      document.getElementById('employee-id').value = '';
+      modal.style.display = 'block';
+    }
+    
+    // Close modal functions
+    closeBtn.onclick = function() {
+      modal.style.display = 'none';
+    }
+    
+    cancelBtn.onclick = function() {
+      modal.style.display = 'none';
+    }
+    
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
     }
   });
   
-  // Close modal with Escape key
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      closeModal();
-    }
-  });
+  // Edit Employee function - this is called when Edit button is clicked
+  function openEditModal(id, name, salary, hours, title) {
+    const modal = document.getElementById('employee-modal');
+    const form = document.getElementById('employee-form');
+    const modalTitle = document.getElementById('modal-title');
+    const submitBtn = document.getElementById('submit-btn');
+    const formMethod = document.getElementById('form-method');
+    
+    modalTitle.textContent = 'Edit Employee';
+    submitBtn.textContent = 'Update Employee';
+    form.action = '/employees/' + id;
+    formMethod.value = 'patch';
+    
+    document.getElementById('employee-id').value = id;
+    document.getElementById('employee-name').value = name;
+    document.getElementById('employee-salary').value = salary;
+    document.getElementById('employee-hours').value = hours;
+    document.getElementById('employee-title').value = title || '';
+    
+    modal.style.display = 'block';
+  }
 </script>
