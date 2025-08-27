@@ -27,7 +27,8 @@ class ClientsController < ApplicationController
         format.html { redirect_to dashboard_path(client_id: @client.id), notice: 'Client created successfully.' }
         format.json { render json: @client, status: :created }
       else
-        format.html { redirect_to dashboard_path, alert: "Error: #{@client.errors.full_messages.join(', ')}" }
+        puts "Client creation failed: #{@client.errors.full_messages}" # Debug output
+        format.html { redirect_to dashboard_path, alert: "Error creating client: #{@client.errors.full_messages.join(', ')}" }
         format.json { render json: @client.errors, status: :unprocessable_entity }
       end
     end
