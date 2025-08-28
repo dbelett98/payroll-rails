@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_08_26_191411) do
+ActiveRecord::Schema[7.1].define(version: 2025_08_27_175838) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -30,7 +30,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_26_191411) do
   create_table "employees", force: :cascade do |t|
     t.string "name"
     t.string "ssn"
-    t.string "bank_account"
+    t.string "bank_account_number"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.decimal "hourly_rate"
@@ -38,7 +38,26 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_26_191411) do
     t.bigint "client_id", null: false
     t.decimal "hours_worked"
     t.string "title"
+    t.text "bank_routing_number"
+    t.date "hire_date"
+    t.string "employment_type", default: "W2"
+    t.string "department"
+    t.string "pay_frequency", default: "biweekly"
+    t.string "status", default: "active"
+    t.integer "federal_withholding_allowances", default: 0
+    t.decimal "federal_additional_withholding", precision: 8, scale: 2, default: "0.0"
+    t.integer "state_withholding_allowances", default: 0
+    t.decimal "state_additional_withholding", precision: 8, scale: 2, default: "0.0"
+    t.string "marital_status"
+    t.text "address"
+    t.string "phone"
+    t.string "emergency_contact_name"
+    t.string "emergency_contact_phone"
     t.index ["client_id"], name: "index_employees_on_client_id"
+    t.index ["department"], name: "index_employees_on_department"
+    t.index ["employment_type"], name: "index_employees_on_employment_type"
+    t.index ["pay_frequency"], name: "index_employees_on_pay_frequency"
+    t.index ["status"], name: "index_employees_on_status"
   end
 
   create_table "payroll_entries", force: :cascade do |t|

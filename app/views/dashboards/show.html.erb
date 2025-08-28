@@ -1,5 +1,5 @@
 <div class="dashboard-wrapper">
-  <!-- Client Selection Bar -->
+  <!-- Enhanced Client Selection Bar -->
   <div class="client-bar">
     <%= form_with url: dashboard_path, method: :get, local: true, class: "client-form" do |f| %>
       <%= f.select :client_id, 
@@ -7,6 +7,18 @@
           { prompt: "Select Client" },
           { class: "client-select", onchange: "this.form.submit();" } %>
     <% end %>
+    
+    <!-- NEW: Search and Filter Bar -->
+    <div class="search-filter-bar">
+      <%= form_with url: dashboard_path, method: :get, local: true, class: "search-form" do |f| %>
+        <%= f.hidden_field :client_id, value: @selected_client&.id %>
+        <%= f.text_field :search, placeholder: "Search employees...", value: params[:search], class: "search-input" %>
+        <%= f.select :status, [['All', ''], ['Active', 'active'], ['Inactive', 'inactive']], 
+                    { selected: params[:status] }, { class: "filter-select" } %>
+        <%= f.submit 'Filter', class: 'btn btn-primary' %>
+      <% end %>
+    </div>
+    
     <div style="display: flex; gap: 1rem;">
       <button id="manage-clients-btn" class="btn btn-primary">
         <span class="btn-icon">🏢</span> Manage Clients
@@ -17,9 +29,9 @@
     </div>
   </div>
 
-  <!-- Main Dashboard Grid -->
+  <!-- Enhanced Main Dashboard Grid -->
   <div class="dashboard-grid">
-    <!-- Client Overview - First Priority -->
+    <!-- Client Overview - Enhanced with more stats -->
     <div class="card card-overview">
       <div class="card-header">
         <span class="card-icon">📊</span>
@@ -32,19 +44,19 @@
             <span class="stat-value"><%= @employees.count %></span>
           </div>
           <div class="stat-item">
+            <span class="stat-label">Active</span>
+            <span class="stat-value"><%= @employees.select { |e| e.respond_to?(:status) && e.status == 'active' }.count rescue @employees.count %></span>
+          </div>
+          <div class="stat-item">
             <span class="stat-label">Total Payroll</span>
             <span class="stat-value">$<%= number_with_delimiter(@employees.sum(&:calculate_pay).round(2)) %></span>
           </div>
-          <div class="stat-item">
-            <span class="stat-label">Average Salary</span>
-            <span class="stat-value">$<%= number_with_delimiter((@employees.average(:salary) || 0).round(2)) %></span>
-          </div>
         </div>
-        <p class="overview-description">Comprehensive client analytics and metrics for better insights</p>
+        <p class="overview-description">Comprehensive client analytics and employee insights</p>
       </div>
     </div>
 
-    <!-- Payroll Status -->
+    <!-- Payroll Status - Keep existing -->
     <div class="card card-status">
       <div class="card-header">
         <span class="card-icon">💰</span>
@@ -59,7 +71,7 @@
       </div>
     </div>
 
-    <!-- Reports -->
+    <!-- Reports - Keep existing -->
     <div class="card card-reports">
       <div class="card-header">
         <span class="card-icon">📈</span>
@@ -76,7 +88,7 @@
     </div>
   </div>
 
-  <!-- Employee Directory -->
+  <!-- Enhanced Employee Directory -->
   <div class="employee-section">
     <div class="section-header">
       <h2 class="section-title">
@@ -91,6 +103,7 @@
           <thead>
             <tr>
               <th class="th-name">Name</th>
+              <th class="th-title">Title</th>
               <th class="th-hours">Hours</th>
               <th class="th-salary">Salary</th>
               <th class="th-pay">Pay</th>
@@ -100,7 +113,10 @@
           <tbody>
             <% @employees.each do |employee| %>
               <tr>
-                <td class="td-name"><%= employee.name %></td>
+                <td class="td-name">
+                  <%= link_to employee.name, employee_path(employee), class: 'employee-name-link' %>
+                </td>
+                <td class="td-title"><%= employee.title || 'Not specified' %></td>
                 <td class="td-hours"><%= number_with_precision(employee.hours_worked, precision: 1) %></td>
                 <td class="td-salary">$<%= number_with_delimiter(employee.salary) %></td>
                 <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
@@ -118,53 +134,87 @@
       </div>
     <% else %>
       <div class="empty-state">
-        <p>No employees found. Add your first employee to get started.</p>
+        <p>No employees found for the selected client.</p>
+        <% if @selected_client %>
+          <button type="button" class="action-btn primary-btn" onclick="openAddModal()">
+            Add First Employee
+          </button>
+        <% end %>
       </div>
     <% end %>
   </div>
 </div>
 
-<!-- Employee Modal (existing) -->
+<!-- Enhanced Employee Modal with Tabs -->
 <div id="employee-modal" class="modal">
-  <div class="modal-content">
+  <div class="modal-content enhanced-modal">
     <div class="modal-header">
       <h3 id="modal-title">Add New Employee</h3>
       <span class="modal-close">&times;</span>
     </div>
     <div class="modal-body">
-      <form id="employee-form" action="/employees" method="post" class="employee-form">
+      <!-- Tab Navigation -->
+      <div class="tab-navigation">
+        <button type="button" class="tab-btn active" onclick="showTab('basic')">Basic Info</button>
+        <button type="button" class="tab-btn" onclick="showTab('payroll')">Payroll</button>
+        <button type="button" class="tab-btn" onclick="showTab('contact')">Contact</button>
+      </div>
+
+      <form id="employee-form" action="/employees" method="post" class="employee-form enhanced-form">
         <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
         <input type="hidden" id="employee-id" name="employee_id" value="">
         <input type="hidden" id="form-method" name="_method" value="post">
         
-        <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input type="text" id="employee-name" name="employee[name]" placeholder="Enter employee name" class="form-input" required>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Annual Salary</label>
-            <input type="number" id="employee-salary" name="employee[salary]" placeholder="$0.00" class="form-input" required>
+        <!-- Basic Info Tab -->
+        <div id="basicTab" class="tab-content active">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" id="employee-name" name="employee[name]" placeholder="Enter employee name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job Title *</label>
+              <select id="employee-title" name="employee[title]" class="form-input" required>
+                <option value="">Select Title</option>
+                <option value="Manager">Manager</option>
+                <option value="Developer">Developer</option>
+                <option value="Designer">Designer</option>
+                <option value="HR">HR</option>
+                <option value="Sales">Sales</option>
+                <option value="Support">Support</option>
+              </select>
+            </div>
           </div>
-          
-          <div class="form-group">
-            <label class="form-label">Hours Worked</label>
-            <input type="number" id="employee-hours" name="employee[hours_worked]" step="0.1" placeholder="40" class="form-input" required>
+        </div>
+
+        <!-- Payroll Tab -->
+        <div id="payrollTab" class="tab-content">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Annual Salary *</label>
+              <input type="number" id="employee-salary" name="employee[salary]" placeholder="$0.00" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hours Worked</label>
+              <input type="number" id="employee-hours" name="employee[hours_worked]" step="0.1" placeholder="40" class="form-input">
+            </div>
           </div>
         </div>
-        
-        <div class="form-group">
-          <label class="form-label">Job Title</label>
-          <select id="employee-title" name="employee[title]" class="form-input">
-            <option value="">Select Title</option>
-            <option value="Manager">Manager</option>
-            <option value="Developer">Developer</option>
-            <option value="Designer">Designer</option>
-            <option value="HR">HR</option>
-            <option value="Sales">Sales</option>
-            <option value="Support">Support</option>
-          </select>
+
+        <!-- Contact Tab -->
+        <div id="contactTab" class="tab-content">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" id="employee-phone" name="employee[phone]" 
+                     placeholder="(XXX) XXX-XXXX" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">SSN</label>
+              <input type="text" id="employee-ssn" name="employee[ssn]" 
+                     placeholder="XXX-XX-XXXX" maxlength="11" class="form-input">
+            </div>
+          </div>
         </div>
         
         <input type="hidden" name="employee[client_id]" value="<%= @selected_client&.id %>">
@@ -178,7 +228,7 @@
   </div>
 </div>
 
-<!-- NEW: Client Management Modal -->
+<!-- Your Existing Client Management Modal (keeping exactly as is) -->
 <div id="client-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -270,6 +320,72 @@
 </div>
 
 <style>
+  /* Enhanced styles for tabbed modal */
+  .enhanced-modal {
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .tab-navigation {
+    display: flex;
+    border-bottom: 2px solid #f1f5f9;
+    margin-bottom: 2rem;
+  }
+  
+  .tab-btn {
+    padding: 1rem 1.5rem;
+    background: none;
+    border: none;
+    color: #4a5568;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+  }
+  
+  .tab-btn.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+  }
+  
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .search-filter-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    flex-wrap: wrap;
+  }
+  
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+  }
+  
+  .filter-select {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+  }
+  
+  /* Keep all your existing client modal styles */
   .client-list {
     max-height: 400px;
     overflow-y: auto;
@@ -314,10 +430,21 @@
   .client-form {
     animation: slideIn 0.3s ease;
   }
+  
+  .employee-name-link {
+    color: #3182ce;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  
+  .employee-name-link:hover {
+    color: #2c5aa0;
+    text-decoration: underline;
+  }
 </style>
 
 <script>
-  // Existing Employee Modal JavaScript
+  // Enhanced JavaScript
   document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('employee-modal');
     const addBtn = document.getElementById('add-employee-btn');
@@ -337,6 +464,7 @@
       form.reset();
       document.getElementById('employee-id').value = '';
       modal.style.display = 'block';
+      showTab('basic');
     }
     
     // Close modal functions
@@ -354,6 +482,17 @@
       }
     }
   });
+  
+  // Tab functionality
+  function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected tab
+    document.getElementById(tabName + 'Tab').classList.add('active');
+    event.target.classList.add('active');
+  }
   
   // Edit Employee function
   function openEditModal(id, name, salary, hours, title) {
@@ -375,9 +514,10 @@
     document.getElementById('employee-title').value = title || '';
     
     modal.style.display = 'block';
+    showTab('basic');
   }
 
-  // NEW: Client Management JavaScript
+  // Keep ALL your existing Client Management JavaScript exactly as is
   document.getElementById('manage-clients-btn').onclick = function() {
     document.getElementById('client-modal').style.display = 'block';
     showClientList();
@@ -393,7 +533,6 @@
     document.getElementById('client-modal-title').textContent = 'Manage Clients';
   }
   
-  // NEW: Input Masking for Client Form
   function setupInputMasking() {
     // EIN Masking: XX-XXXXXXX
     const einInput = document.getElementById('client-ein');
@@ -426,20 +565,17 @@
     }
   }
   
-  // Setup input masking when client modal opens
   function showClientForm() {
     document.getElementById('client-list').style.display = 'none';
     document.getElementById('client-form').style.display = 'block';
     document.getElementById('client-modal-title').textContent = 'Add New Client';
     
-    // Reset form for new client
     const form = document.getElementById('client-form-element');
     form.action = '/clients';
     document.getElementById('client-form-method').value = 'post';
     document.getElementById('client-submit-btn').textContent = 'Add Client';
     form.reset();
     
-    // Setup input masking
     setupInputMasking();
   }
   
@@ -460,7 +596,6 @@
     document.getElementById('client-phone').value = phone || '';
     document.getElementById('client-email').value = email || '';
     
-    // Setup input masking for edit form too
     setupInputMasking();
   }
   

@@ -1,0 +1,517 @@
+<!-- Employee Profile Page -->
+<div class="profile-wrapper">
+  <!-- Breadcrumb Navigation -->
+  <div class="breadcrumb-nav">
+    <%= link_to 'Dashboard', dashboard_path(client_id: @client.id), class: 'breadcrumb-link' %>
+    <span class="breadcrumb-separator">›</span>
+    <span class="breadcrumb-current"><%= @employee.name %></span>
+  </div>
+
+  <!-- Employee Header Card -->
+  <div class="employee-header-card">
+    <div class="employee-avatar">
+      <span class="avatar-initials">
+        <%= @employee.name.split.map(&:first).join('').upcase %>
+      </span>
+    </div>
+    <div class="employee-info">
+      <h1 class="employee-name"><%= @employee.name %></h1>
+      <p class="employee-title"><%= @employee.title || 'No title specified' %></p>
+      <div class="employee-badges">
+        <span class="status-badge <%= @employee.status || 'active' %>">
+          <%= (@employee.status || 'active').titleize %>
+        </span>
+        <span class="type-badge">
+          <%= @employee.employment_type || 'W2' %> Employee
+        </span>
+        <span class="client-badge"><%= @client.name %></span>
+      </div>
+    </div>
+    <div class="employee-stats">
+      <div class="stat">
+        <span class="stat-label">Annual Salary</span>
+        <span class="stat-value"><%= number_to_currency(@employee.salary || 0) %></span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Current Pay</span>
+        <span class="stat-value"><%= number_to_currency(@employee.calculate_pay) %></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Content Grid -->
+  <div class="profile-content">
+    
+    <!-- Basic Information -->
+    <div class="info-card">
+      <h3 class="card-title">Basic Information</h3>
+      <div class="info-list">
+        <div class="info-item">
+          <span class="info-label">Full Name</span>
+          <span class="info-value"><%= @employee.name %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Job Title</span>
+          <span class="info-value"><%= @employee.title || 'Not specified' %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Department</span>
+          <span class="info-value"><%= @employee.department || 'Not specified' %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Employment Type</span>
+          <span class="info-value"><%= @employee.employment_type || 'W2' %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Employment Status</span>
+          <span class="info-value status-<%= @employee.status || 'active' %>">
+            <%= (@employee.status || 'active').titleize %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Hire Date</span>
+          <span class="info-value">
+            <%= @employee.hire_date&.strftime('%B %d, %Y') || 'Not specified' %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payroll Information -->
+    <div class="info-card">
+      <h3 class="card-title">Payroll Information</h3>
+      <div class="info-list">
+        <div class="info-item">
+          <span class="info-label">Annual Salary</span>
+          <span class="info-value salary-amount">
+            <%= number_to_currency(@employee.salary || 0) %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Pay Frequency</span>
+          <span class="info-value"><%= (@employee.pay_frequency || 'biweekly').titleize %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Current Hours</span>
+          <span class="info-value"><%= @employee.hours_worked || 0 %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Current Pay</span>
+          <span class="info-value pay-amount">
+            <%= number_to_currency(@employee.calculate_pay) %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Hourly Rate</span>
+          <span class="info-value">
+            <%= number_to_currency((@employee.salary || 0) / 2080) %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="info-card">
+      <h3 class="card-title">Contact Information</h3>
+      <div class="info-list">
+        <div class="info-item">
+          <span class="info-label">Phone</span>
+          <span class="info-value">
+            <%= @employee.phone || 'Not provided' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Address</span>
+          <span class="info-value">
+            <%= @employee.address || 'Not provided' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Emergency Contact</span>
+          <span class="info-value">
+            <%= @employee.emergency_contact_name || 'Not provided' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Emergency Phone</span>
+          <span class="info-value">
+            <%= @employee.emergency_contact_phone || 'Not provided' %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bank Information -->
+    <div class="info-card sensitive-data">
+      <h3 class="card-title">Banking Information</h3>
+      <div class="info-list">
+        <div class="info-item">
+          <span class="info-label">Account Number</span>
+          <span class="info-value sensitive">
+            <%= @employee.bank_account_number.present? ? "*" * (@employee.bank_account_number.to_s.length - 4) + @employee.bank_account_number.to_s.last(4) : 'Not provided' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Routing Number</span>
+          <span class="info-value sensitive">
+            <%= @employee.bank_routing_number.present? ? "*****#{@employee.bank_routing_number.to_s.last(4)}" : 'Not provided' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">SSN</span>
+          <span class="info-value sensitive">
+            <%= @employee.ssn.present? ? "***-**-#{@employee.ssn.to_s.last(4)}" : 'Not provided' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Direct Deposit</span>
+          <span class="info-value">
+            <%= (@employee.bank_account_number.present? && @employee.bank_routing_number.present?) ? 'Enabled' : 'Not Setup' %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tax Information -->
+    <div class="info-card">
+      <h3 class="card-title">Tax Information</h3>
+      <div class="info-list">
+        <div class="info-item">
+          <span class="info-label">Marital Status</span>
+          <span class="info-value">
+            <%= @employee.marital_status&.humanize&.titleize || 'Not specified' %>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Federal Allowances</span>
+          <span class="info-value"><%= @employee.federal_withholding_allowances || 0 %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">State Allowances</span>
+          <span class="info-value"><%= @employee.state_withholding_allowances || 0 %></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Additional Federal</span>
+          <span class="info-value">
+            <%= number_to_currency(@employee.federal_additional_withholding || 0) %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="info-card">
+      <h3 class="card-title">Recent Activity</h3>
+      <div class="activity-list">
+        <div class="activity-item">
+          <span class="activity-date">Coming Soon</span>
+          <span class="activity-description">Payroll history will appear here in Step N</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-date">Coming Soon</span>
+          <span class="activity-description">Pay stub generation in Step Q</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-date">Coming Soon</span>
+          <span class="activity-description">Time tracking in Step P</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="profile-actions">
+    <button type="button" class="btn btn-primary" onclick="editEmployee()">
+      Edit Employee
+    </button>
+    <button type="button" class="btn btn-secondary" onclick="generatePayStub()">
+      Generate Pay Stub (Coming Soon)
+    </button>
+    <%= link_to 'Back to Dashboard', dashboard_path(client_id: @client.id), class: 'btn btn-secondary' %>
+  </div>
+</div>
+
+<style>
+  .profile-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .breadcrumb-nav {
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+  
+  .breadcrumb-link {
+    color: #667eea;
+    text-decoration: none;
+  }
+  
+  .breadcrumb-link:hover {
+    text-decoration: underline;
+  }
+  
+  .breadcrumb-separator {
+    margin: 0 0.5rem;
+    color: #9ca3af;
+  }
+  
+  .breadcrumb-current {
+    color: #4b5563;
+    font-weight: 500;
+  }
+  
+  .employee-header-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 2rem;
+    align-items: center;
+  }
+  
+  .employee-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+  }
+  
+  .employee-name {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1a202c;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .employee-title {
+    font-size: 1.2rem;
+    color: #4a5568;
+    margin: 0 0 1rem 0;
+  }
+  
+  .employee-badges {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  
+  .status-badge, .type-badge, .client-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-badge.active {
+    background: #c6f6d5;
+    color: #22543d;
+  }
+  
+  .status-badge.inactive {
+    background: #fed7d7;
+    color: #742a2a;
+  }
+  
+  .type-badge {
+    background: #bee3f8;
+    color: #1a365d;
+  }
+  
+  .client-badge {
+    background: #e6fffa;
+    color: #234e52;
+  }
+  
+  .employee-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    text-align: right;
+  }
+  
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  
+  .stat-label {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-bottom: 0.25rem;
+  }
+  
+  .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2d3748;
+  }
+  
+  .profile-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .info-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .sensitive-data {
+    border: 2px solid #fed7d7;
+    background: linear-gradient(135deg, #fff5f5, #ffffff);
+  }
+  
+  .card-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f7fafc;
+  }
+  
+  .info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  
+  .info-item:last-child {
+    border-bottom: none;
+  }
+  
+  .info-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #4a5568;
+  }
+  
+  .info-value {
+    font-size: 0.9rem;
+    color: #2d3748;
+    font-weight: 500;
+  }
+  
+  .info-value.sensitive {
+    font-family: monospace;
+    background: #f7fafc;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .salary-amount, .pay-amount {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #38a169;
+  }
+  
+  .status-active {
+    color: #38a169;
+  }
+  
+  .status-inactive {
+    color: #e53e3e;
+  }
+  
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .activity-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f7fafc;
+    border-radius: 8px;
+  }
+  
+  .activity-date {
+    font-size: 0.85rem;
+    color: #4a5568;
+    font-weight: 500;
+  }
+  
+  .activity-description {
+    color: #2d3748;
+    font-size: 0.9rem;
+  }
+  
+  .profile-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .profile-wrapper {
+      padding: 1rem;
+    }
+    
+    .employee-header-card {
+      grid-template-columns: 1fr;
+      text-align: center;
+      gap: 1rem;
+    }
+    
+    .employee-stats {
+      align-items: center;
+    }
+    
+    .profile-content {
+      grid-template-columns: 1fr;
+    }
+    
+    .profile-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .profile-actions .btn {
+      width: 100%;
+      max-width: 300px;
+    }
+  }
+</style>
+
+<script>
+  function editEmployee() {
+    // Redirect back to dashboard with edit modal
+    window.location.href = `/dashboard?client_id=<%= @client.id %>&edit_employee=<%= @employee.id %>`;
+  }
+  
+  function generatePayStub() {
+    alert('Pay stub generation will be available in Step Q: Pay Stub Generation');
+  }
+</script>
