@@ -1,4 +1,5 @@
-# app/controllers/employees_controller.rb: Complete employee CRUD with modal error handling
+# app/controllers/employees_controller.rb - Complete replacement (Fixed)
+
 class EmployeesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_employee, only: [:show, :edit, :update, :destroy]
@@ -26,40 +27,54 @@ class EmployeesController < ApplicationController
   # GET /employees/new
   def new
     @employee = Employee.new
+    @employee.hire_date = Date.current
+    @employee.employment_type = 'W2'
+    @employee.pay_frequency = 'biweekly'
+    @employee.status = 'active'
+    @employee.federal_withholding_allowances = 0
+    @employee.state_withholding_allowances = 0
+    @employee.federal_additional_withholding = 0.0
+    @employee.state_additional_withholding = 0.0
+    render :edit  # Use the same enhanced form
   end
 
   # POST /employees
   def create
     @employee = Employee.new(employee_params)
     
-    respond_to do |format|
-      if @employee.save
-        format.html { redirect_to dashboard_path(client_id: @employee.client_id), notice: 'Employee added successfully.' }
-        format.json { render json: { success: true, employee: @employee, message: 'Employee added successfully.' } }
-      else
-        format.html { redirect_to dashboard_path(client_id: @employee.client_id), alert: "Error: #{@employee.errors.full_messages.join(', ')}" }
-        format.json { render json: { success: false, errors: @employee.errors.full_messages }, status: :unprocessable_entity }
-      end
+    puts "=== DEBUG: Create attempt ==="
+    puts "Permitted params: #{employee_params.inspect}"
+    
+    if @employee.save
+      puts "✅ SUCCESS: Employee created successfully"
+      redirect_to dashboard_path(client_id: @employee.client_id), notice: 'Employee added successfully.'
+    else
+      puts "❌ FAILED: Create errors: #{@employee.errors.full_messages}"
+      # CRITICAL: Render form with errors instead of redirecting
+      render :edit, status: :unprocessable_entity
     end
   end
 
-  # PATCH/PUT /employees/:id
+  # GET /employees/:id/edit
+  def edit
+    # Employee is set by before_action - this will use the enhanced form
+  end
+
+  # PATCH/PUT /employees/:id - THE CRITICAL FIX IS HERE
   def update
     puts "=== DEBUG: Update attempt ==="
     puts "Employee ID: #{@employee.id}"
     puts "Original title: #{@employee.title}"
     puts "Permitted params: #{employee_params.inspect}"
+    puts "Raw params: #{params[:employee].inspect}"
     
-    respond_to do |format|
-      if @employee.update(employee_params)
-        puts "✅ SUCCESS: Employee updated! New title: #{@employee.reload.title}"
-        format.html { redirect_to dashboard_path(client_id: @employee.client_id), notice: 'Employee updated successfully.' }
-        format.json { render json: { success: true, employee: @employee, message: 'Employee updated successfully.' } }
-      else
-        puts "❌ FAILED: Update errors: #{@employee.errors.full_messages}"
-        format.html { redirect_to dashboard_path(client_id: @employee.client_id), alert: "Error: #{@employee.errors.full_messages.join(', ')}" }
-        format.json { render json: { success: false, errors: @employee.errors.full_messages }, status: :unprocessable_entity }
-      end
+    if @employee.update(employee_params)
+      puts "✅ SUCCESS: Employee updated! New title: #{@employee.reload.title}"
+      redirect_to dashboard_path(client_id: @employee.client_id), notice: 'Employee updated successfully.'
+    else
+      puts "❌ FAILED: Update errors: #{@employee.errors.full_messages}"
+      # CRITICAL FIX: Render the form with errors instead of redirecting
+      render :edit, status: :unprocessable_entity
     end
   end
 
@@ -67,14 +82,10 @@ class EmployeesController < ApplicationController
   def destroy
     client_id = @employee.client_id
     @employee.destroy
-    
-    respond_to do |format|
-      format.html { redirect_to dashboard_path(client_id: client_id), notice: 'Employee deleted successfully.' }
-      format.json { head :no_content }
-    end
+    redirect_to dashboard_path(client_id: client_id), notice: 'Employee deleted successfully.'
   end
 
-  # Bulk operations
+  # Bulk operations for future use
   def bulk_update
     employee_ids = params[:employee_ids] || []
     action_type = params[:bulk_action]
@@ -94,7 +105,7 @@ class EmployeesController < ApplicationController
     redirect_to dashboard_path(client_id: params[:client_id]), notice: message
   end
 
-  # CSV export
+  # CSV export for future use
   def export_csv
     @selected_client_id = params[:client_id]
     @selected_client = Client.find(@selected_client_id) if @selected_client_id
@@ -119,21 +130,20 @@ class EmployeesController < ApplicationController
     @employee = Employee.find(params[:id])
   end
 
-  # Complete parameter permissions for all Step L fields
+  # UPDATED: Complete parameter permissions for all Step L fields
   def employee_params
     params.require(:employee).permit(
-      # Basic Information
+      # Basic Information (existing + Step L)
       :name, :title, :department, :hire_date, :employment_type, :status, :client_id,
       # Payroll Information  
-      :salary, :hours_worked, :pay_frequency,
+      :salary, :hours_worked, :pay_frequency, :marital_status,
       # Contact Information
-      :address, :phone, :email, :emergency_contact_name, 
-      :emergency_contact_phone, :emergency_contact_relationship,
-      # Banking Information (for future)
-      :bank_routing_number, :bank_account_number,
-      # Tax Information (for future)
+      :address, :phone, :email, :emergency_contact_name, :emergency_contact_phone,
+      # Tax Information (no encryption for now)
       :ssn, :federal_withholding_allowances, :federal_additional_withholding,
-      :state_withholding_allowances, :state_additional_withholding, :marital_status
+      :state_withholding_allowances, :state_additional_withholding,
+      # Banking Information (no encryption for now)
+      :bank_routing_number, :bank_account_number
     )
   end
 
@@ -155,6 +165,6 @@ class EmployeesController < ApplicationController
           employee.emergency_contact_name, employee.emergency_contact_phone
         ]
       end
-    </end>
+    end
   end
 end

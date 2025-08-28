@@ -1,25 +1,208 @@
-<h2>Edit Employee</h2>
+<!-- Replace entire app/views/employees/edit.html.erb content -->
+<div class="modal-overlay" onclick="closeModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2><%= @employee.persisted? ? 'Edit Employee' : 'Add New Employee' %></h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
 
-<%= form_with model: @employee, local: true do |form| %>
-  <div class="mb-4">
-    <%= form.label :name, class: "block text-gray-700" %>
-    <%= form.text_field :name, class: "w-full p-2 border rounded" %>
+    <!-- Display validation errors -->
+    <% if @employee.errors.any? %>
+      <div class="error-container">
+        <h4><%= pluralize(@employee.errors.count, "error") %> prohibited this employee from being saved:</h4>
+        <ul>
+          <% @employee.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form_with model: @employee, local: true, class: "employee-form" do |form| %>
+      <%= form.hidden_field :client_id, value: @employee.client_id %>
+      
+      <!-- Tab Navigation -->
+      <div class="tab-navigation">
+        <button type="button" class="tab-button active" data-tab="basic">Basic Information</button>
+        <button type="button" class="tab-button" data-tab="payroll">Payroll Information</button>
+        <button type="button" class="tab-button" data-tab="contact">Contact Information</button>
+      </div>
+
+      <!-- Basic Information Tab -->
+      <div class="tab-content active" data-tab="basic">
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :name, class: "form-label" %>
+            <%= form.text_field :name, class: "form-input #{'error' if @employee.errors[:name].any?}", required: true %>
+          </div>
+          <div class="form-group">
+            <%= form.label :title, class: "form-label" %>
+            <%= form.text_field :title, class: "form-input #{'error' if @employee.errors[:title].any?}", required: true %>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :hire_date, "Hire Date *", class: "form-label" %>
+            <%= form.date_field :hire_date, class: "form-input #{'error' if @employee.errors[:hire_date].any?}", required: true, value: @employee.hire_date || Date.current %>
+          </div>
+          <div class="form-group">
+            <%= form.label :employment_type, class: "form-label" %>
+            <%= form.select :employment_type, 
+                options_for_select([
+                  ['W2 Employee', 'W2'],
+                  ['1099 Contractor', '1099']
+                ], @employee.employment_type || 'W2'), 
+                { }, 
+                { class: "form-input #{'error' if @employee.errors[:employment_type].any?}" } %>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :department, class: "form-label" %>
+            <%= form.text_field :department, class: "form-input #{'error' if @employee.errors[:department].any?}" %>
+          </div>
+          <div class="form-group">
+            <%= form.label :status, class: "form-label" %>
+            <%= form.select :status, 
+                options_for_select([
+                  ['Active', 'active'],
+                  ['Inactive', 'inactive']
+                ], @employee.status || 'active'), 
+                { }, 
+                { class: "form-input #{'error' if @employee.errors[:status].any?}" } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payroll Information Tab -->
+      <div class="tab-content" data-tab="payroll">
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :salary, "Annual Salary *", class: "form-label" %>
+            <%= form.number_field :salary, step: 0.01, class: "form-input #{'error' if @employee.errors[:salary].any?}", required: true %>
+          </div>
+          <div class="form-group">
+            <%= form.label :hours_worked, "Hours Worked *", class: "form-label" %>
+            <%= form.number_field :hours_worked, step: 0.01, class: "form-input #{'error' if @employee.errors[:hours_worked].any?}", required: true %>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :pay_frequency, class: "form-label" %>
+            <%= form.select :pay_frequency, 
+                options_for_select([
+                  ['Weekly', 'weekly'],
+                  ['Bi-weekly', 'biweekly'],
+                  ['Semi-monthly', 'semimonthly'],
+                  ['Monthly', 'monthly']
+                ], @employee.pay_frequency || 'biweekly'), 
+                { }, 
+                { class: "form-input #{'error' if @employee.errors[:pay_frequency].any?}" } %>
+          </div>
+          <div class="form-group">
+            <%= form.label :marital_status, class: "form-label" %>
+            <%= form.select :marital_status, 
+                options_for_select([
+                  ['Single', 'single'],
+                  ['Married Filing Jointly', 'married_jointly'],
+                  ['Married Filing Separately', 'married_separately'],
+                  ['Head of Household', 'head_of_household']
+                ], @employee.marital_status), 
+                { include_blank: 'Select Status' }, 
+                { class: "form-input #{'error' if @employee.errors[:marital_status].any?}" } %>
+          </div>
+        </div>
+
+        <div class="form-section-header">Federal Tax Withholding</div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :federal_withholding_allowances, "Allowances", class: "form-label" %>
+            <%= form.number_field :federal_withholding_allowances, class: "form-input #{'error' if @employee.errors[:federal_withholding_allowances].any?}", value: @employee.federal_withholding_allowances || 0 %>
+          </div>
+          <div class="form-group">
+            <%= form.label :federal_additional_withholding, "Additional Amount", class: "form-label" %>
+            <%= form.number_field :federal_additional_withholding, step: 0.01, class: "form-input #{'error' if @employee.errors[:federal_additional_withholding].any?}", value: @employee.federal_additional_withholding || 0 %>
+          </div>
+        </div>
+
+        <div class="form-section-header">State Tax Withholding</div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :state_withholding_allowances, "Allowances", class: "form-label" %>
+            <%= form.number_field :state_withholding_allowances, class: "form-input #{'error' if @employee.errors[:state_withholding_allowances].any?}", value: @employee.state_withholding_allowances || 0 %>
+          </div>
+          <div class="form-group">
+            <%= form.label :state_additional_withholding, "Additional Amount", class: "form-label" %>
+            <%= form.number_field :state_additional_withholding, step: 0.01, class: "form-input #{'error' if @employee.errors[:state_additional_withholding].any?}", value: @employee.state_additional_withholding || 0 %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Information Tab -->
+      <div class="tab-content" data-tab="contact">
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :phone, class: "form-label" %>
+            <%= form.telephone_field :phone, class: "form-input #{'error' if @employee.errors[:phone].any?}" %>
+          </div>
+          <div class="form-group">
+            <%= form.label :ssn, "SSN", class: "form-label" %>
+            <%= form.text_field :ssn, class: "form-input #{'error' if @employee.errors[:ssn].any?}", placeholder: "XXX-XX-XXXX" %>
+          </div>
+        </div>
+
+        <div class="form-group full-width">
+          <%= form.label :address, class: "form-label" %>
+          <%= form.text_area :address, rows: 3, class: "form-input #{'error' if @employee.errors[:address].any?}" %>
+        </div>
+
+        <div class="form-section-header">Emergency Contact</div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :emergency_contact_name, "Name", class: "form-label" %>
+            <%= form.text_field :emergency_contact_name, class: "form-input #{'error' if @employee.errors[:emergency_contact_name].any?}" %>
+          </div>
+          <div class="form-group">
+            <%= form.label :emergency_contact_phone, "Phone", class: "form-label" %>
+            <%= form.telephone_field :emergency_contact_phone, class: "form-input #{'error' if @employee.errors[:emergency_contact_phone].any?}" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <%= form.submit (@employee.persisted? ? 'Update Employee' : 'Create Employee'), class: "btn-primary" %>
+      </div>
+    <% end %>
   </div>
-  <div class="mb-4">
-    <%= form.label :hours_worked, class: "block text-gray-700" %>
-    <%= form.text_field :hours_worked, class: "w-full p-2 border rounded" %>
-  </div>
-  <div class="mb-4">
-    <%= form.label :salary, class: "block text-gray-700" %>
-    <%= form.text_field :salary, class: "w-full p-2 border rounded" %>
-  </div>
-  <div class="mb-4">
-    <%= form.label :title, class: "block text-gray-700" %>
-    <%= form.select :title, ['Manager', 'Associate', 'Analyst', 'Intern'], { include_blank: 'Select Title' }, class: "w-full p-2 border rounded" %>
-  </div>
-  <%= form.hidden_field :client_id, value: @employee.client_id %>
-  <div class="mb-4">
-    <%= form.submit "Update Employee", class: "bg-green-500 text-white p-2 rounded hover:bg-green-700" %>
-    <%= link_to "Cancel", dashboard_path(client_id: @employee.client_id), class: "bg-gray-500 text-white p-2 rounded hover:bg-gray-700 ml-2" %>
-  </div>
-<% end %>
+</div>
+
+<script>
+function closeModal() {
+  const clientId = '<%= @employee.client_id %>';
+  window.location.href = `/dashboard?client_id=${clientId}`;
+}
+
+// Tab functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const tabName = this.getAttribute('data-tab');
+      
+      // Remove active class from all tabs and contents
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      
+      // Add active class to clicked tab and corresponding content
+      this.classList.add('active');
+      document.querySelector(`.tab-content[data-tab="${tabName}"]`).classList.add('active');
+    });
+  });
+});
+</script>

@@ -1,83 +1,155 @@
+# app/models/employee.rb - Complete replacement (Fixed encryption issue)
+
 class Employee < ApplicationRecord
   belongs_to :client
   has_many :payroll_runs, dependent: :destroy
   
-  # Encrypted attributes for sensitive data (ssn already exists)
-  encrypts :ssn
-  encrypts :bank_routing_number
-  encrypts :bank_account_number
+  # NOTE: Removed encrypts for now - will add in Step M when we set up Rails credentials
+  # encrypts :ssn
+  # encrypts :bank_routing_number
+  # encrypts :bank_account_number
   
-  # Validations
-  validates :name, presence: true, length: { minimum: 2 }
-  validates :hours_worked, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  validates :salary, presence: true, numericality: { greater_than: 0 }
-  validates :title, presence: true
-  validates :hire_date, presence: true
+  # ===== VALIDATIONS =====
+  
+  # Core required fields
+  validates :name, presence: { message: "is required" }, length: { minimum: 2, message: "must be at least 2 characters" }
+  validates :hire_date, presence: { message: "is required - please select the employee's start date" }
+  validates :title, presence: { message: "is required" }
+  validates :salary, presence: { message: "is required" }, numericality: { greater_than: 0, message: "must be greater than $0" }
+  validates :hours_worked, presence: { message: "is required" }, numericality: { greater_than_or_equal_to: 0, message: "cannot be negative" }
+  
+  # Employment details
   validates :employment_type, inclusion: { in: %w[W2 1099], message: "must be W2 or 1099" }
   validates :status, inclusion: { in: %w[active inactive], message: "must be active or inactive" }
   validates :pay_frequency, inclusion: { 
     in: %w[weekly biweekly semimonthly monthly], 
     message: "must be weekly, biweekly, semimonthly, or monthly" 
   }
+  
+  # Optional fields with validation when present
   validates :marital_status, inclusion: { 
     in: %w[single married_jointly married_separately head_of_household], 
-    message: "must be valid marital status",
+    message: "must be a valid marital status",
     allow_blank: true
   }
   
-  # SSN validation (if provided)
-  validates :ssn, format: { 
-    with: /\A\d{3}-\d{2}-\d{4}\z/, 
-    message: "must be in format XXX-XX-XXXX" 
+  # Contact validations - flexible format
+  validates :phone, format: { 
+    with: /\A[\+\-\s\(\)0-9]+\z/, 
+    message: "contains invalid characters" 
   }, allow_blank: true
   
-  # Bank account validations (if provided)
+  validates :emergency_contact_phone, format: { 
+    with: /\A[\+\-\s\(\)0-9]+\z/, 
+    message: "contains invalid characters" 
+  }, allow_blank: true
+  
+  validates :email, format: { 
+    with: URI::MailTo::EMAIL_REGEXP, 
+    message: "is not a valid email address" 
+  }, allow_blank: true
+  
+  # SSN validation - flexible format (no encryption for now)
+  validates :ssn, format: { 
+    with: /\A\d{3}-?\d{2}-?\d{4}\z/, 
+    message: "must be in format XXX-XX-XXXX or XXXXXXXXX" 
+  }, allow_blank: true
+  
+  # Banking validations (when provided, no encryption for now)
   validates :bank_routing_number, format: { 
     with: /\A\d{9}\z/, 
-    message: "must be 9 digits" 
+    message: "must be exactly 9 digits" 
   }, allow_blank: true
+  
   validates :bank_account_number, format: { 
     with: /\A\d{4,17}\z/, 
     message: "must be 4-17 digits" 
   }, allow_blank: true
   
-  # Phone validations
-  validates :phone, format: { 
-    with: /\A\(\d{3}\) \d{3}-\d{4}\z/, 
-    message: "must be in format (XXX) XXX-XXXX" 
-  }, allow_blank: true
-  validates :emergency_contact_phone, format: { 
-    with: /\A\(\d{3}\) \d{3}-\d{4}\z/, 
-    message: "must be in format (XXX) XXX-XXXX" 
+  # Tax withholding validations
+  validates :federal_withholding_allowances, numericality: { 
+    greater_than_or_equal_to: 0, 
+    message: "cannot be negative" 
   }, allow_blank: true
   
-  # Scopes
+  validates :state_withholding_allowances, numericality: { 
+    greater_than_or_equal_to: 0, 
+    message: "cannot be negative" 
+  }, allow_blank: true
+  
+  validates :federal_additional_withholding, numericality: { 
+    greater_than_or_equal_to: 0, 
+    message: "cannot be negative" 
+  }, allow_blank: true
+  
+  validates :state_additional_withholding, numericality: { 
+    greater_than_or_equal_to: 0, 
+    message: "cannot be negative" 
+  }, allow_blank: true
+
+  # ===== SCOPES =====
   scope :active, -> { where(status: 'active') }
   scope :inactive, -> { where(status: 'inactive') }
   scope :w2_employees, -> { where(employment_type: 'W2') }
   scope :contractors, -> { where(employment_type: '1099') }
   scope :by_department, ->(dept) { where(department: dept) }
   scope :by_pay_frequency, ->(freq) { where(pay_frequency: freq) }
+  scope :by_status, ->(status) { where(status: status) }
   
-  # Existing calculation method (from previous steps)
+  # ===== INSTANCE METHODS =====
+  
+  # Enhanced payroll calculation method
   def calculate_pay
-    # Basic calculation - will be enhanced in Step N
+    return 0 if salary.blank? || hours_worked.blank?
+
     if employment_type == '1099'
       # 1099 contractors - simple hourly calculation
-      hours_worked * (salary / 2080) # Assume salary is annual, convert to hourly
+      hourly_rate = calculate_hourly_rate
+      (hours_worked * hourly_rate).round(2)
     else
       # W2 employees - calculate with overtime
       regular_hours = [hours_worked, 40].min
       overtime_hours = [hours_worked - 40, 0].max
-      hourly_rate = salary / 2080 # Convert annual salary to hourly
+      hourly_rate = calculate_hourly_rate
       
-      (regular_hours * hourly_rate) + (overtime_hours * hourly_rate * 1.5)
+      regular_pay = regular_hours * hourly_rate
+      overtime_pay = overtime_hours * (hourly_rate * 1.5)
+      
+      (regular_pay + overtime_pay).round(2)
     end
   end
   
-  # Helper methods
+  # Calculate hourly rate from annual salary
+  def calculate_hourly_rate
+    return 0 if salary.blank?
+    (salary / 2080.0).round(2) # Standard 40 hours/week * 52 weeks
+  end
+  
+  # Calculate gross pay based on pay frequency
+  def calculate_gross_pay_per_period
+    return 0 if salary.blank?
+
+    case pay_frequency
+    when 'weekly'
+      (salary / 52.0).round(2)
+    when 'biweekly'
+      (salary / 26.0).round(2)
+    when 'semimonthly'
+      (salary / 24.0).round(2)
+    when 'monthly'
+      (salary / 12.0).round(2)
+    else
+      0
+    end
+  end
+  
+  # Helper methods for display
   def full_name
     name
+  end
+  
+  def display_name
+    title.present? ? "#{name} - #{title}" : name
   end
   
   def active?
@@ -96,36 +168,170 @@ class Employee < ApplicationRecord
     bank_routing_number.present? && bank_account_number.present?
   end
   
-  def masked_ssn
+  # Formatted display methods (no encryption for now)
+  def formatted_ssn
     return 'Not provided' if ssn.blank?
-    "***-**-#{ssn.last(4)}"
+    "***-**-#{ssn.to_s.last(4)}"
+  end
+  
+  def masked_ssn
+    formatted_ssn
+  end
+  
+  def formatted_phone
+    return 'Not provided' if phone.blank?
+    # Clean and format phone number
+    digits = phone.gsub(/\D/, '')
+    case digits.length
+    when 10
+      "(#{digits[0,3]}) #{digits[3,3]}-#{digits[6,4]}"
+    when 11
+      "+#{digits[0]} (#{digits[1,3]}) #{digits[4,3]}-#{digits[7,4]}"
+    else
+      phone
+    end
+  end
+  
+  def formatted_emergency_contact_phone
+    return 'Not provided' if emergency_contact_phone.blank?
+    digits = emergency_contact_phone.gsub(/\D/, '')
+    case digits.length
+    when 10
+      "(#{digits[0,3]}) #{digits[3,3]}-#{digits[6,4]}"
+    when 11
+      "+#{digits[0]} (#{digits[1,3]}) #{digits[4,3]}-#{digits[7,4]}"
+    else
+      emergency_contact_phone
+    end
   end
   
   def masked_bank_account
     return 'Not provided' if bank_account_number.blank?
-    "*" * (bank_account_number.length - 4) + bank_account_number.last(4)
+    "*" * ([bank_account_number.to_s.length - 4, 1].max) + bank_account_number.to_s.last(4)
   end
   
+  def masked_routing_number
+    return 'Not provided' if bank_routing_number.blank?
+    "*****#{bank_routing_number.to_s.last(4)}"
+  end
+  
+  # Date and time calculations
   def employment_length_in_years
     return 0 if hire_date.blank?
     ((Date.current - hire_date) / 365.25).round(1)
   end
   
-  def next_pay_date
-    # Simple calculation - will be enhanced in Step O (Payroll Run Management)
-    case pay_frequency
-    when 'weekly'
-      1.week.from_now.end_of_week
-    when 'biweekly'
-      2.weeks.from_now.end_of_week
-    when 'semimonthly'
-      Date.current.day <= 15 ? Date.current.end_of_month : Date.current.next_month.beginning_of_month + 14.days
-    when 'monthly'
-      Date.current.end_of_month
+  def employment_length_display
+    return 'Not specified' if hire_date.blank?
+    years = employment_length_in_years
+    if years < 1
+      months = ((Date.current - hire_date) / 30).round
+      "#{months} #{'month'.pluralize(months)}"
+    else
+      "#{years} #{'year'.pluralize(years.to_i)}"
     end
   end
   
-  # Constants for dropdowns
+  def next_pay_date
+    return nil if hire_date.blank?
+    
+    base_date = hire_date
+    today = Date.current
+    
+    case pay_frequency
+    when 'weekly'
+      # Find next Friday
+      days_until_friday = (5 - today.wday) % 7
+      days_until_friday = 7 if days_until_friday == 0
+      today + days_until_friday.days
+    when 'biweekly'
+      # Every other Friday
+      days_since_hire = (today - base_date).to_i
+      weeks_since_hire = (days_since_hire / 7).to_i
+      biweeks_since_hire = weeks_since_hire / 2
+      next_biweek = biweeks_since_hire + 1
+      base_date + (next_biweek * 2).weeks
+    when 'semimonthly'
+      # 15th and last day of month
+      if today.day <= 15
+        Date.new(today.year, today.month, 15)
+      else
+        today.end_of_month
+      end
+    when 'monthly'
+      # Same day each month as hire date
+      target_day = [hire_date.day, today.end_of_month.day].min
+      if today.day <= target_day
+        Date.new(today.year, today.month, target_day)
+      else
+        next_month = today.next_month
+        Date.new(next_month.year, next_month.month, [hire_date.day, next_month.end_of_month.day].min)
+      end
+    else
+      nil
+    end
+  end
+  
+  # Status and type display methods
+  def status_display
+    status&.titleize || 'Active'
+  end
+  
+  def employment_type_display
+    case employment_type
+    when 'W2'
+      'W2 Employee'
+    when '1099'
+      '1099 Contractor'
+    else
+      'W2 Employee'
+    end
+  end
+  
+  def pay_frequency_display
+    pay_frequency&.titleize&.gsub('biweekly', 'Bi-weekly') || 'Bi-weekly'
+  end
+  
+  def marital_status_display
+    case marital_status
+    when 'single'
+      'Single'
+    when 'married_jointly'
+      'Married Filing Jointly'
+    when 'married_separately'
+      'Married Filing Separately'
+    when 'head_of_household'
+      'Head of Household'
+    else
+      'Not specified'
+    end
+  end
+
+  # ===== CLASS METHODS =====
+  
+  def self.total_payroll_cost(client_id = nil)
+    employees = client_id ? where(client_id: client_id) : all
+    employees.active.sum { |emp| emp.calculate_pay }
+  end
+
+  def self.by_pay_frequency_stats
+    active.group(:pay_frequency).count
+  end
+
+  def self.by_employment_type_stats
+    active.group(:employment_type).count
+  end
+  
+  def self.by_department_stats
+    active.group(:department).count
+  end
+  
+  def self.average_salary(client_id = nil)
+    employees = client_id ? where(client_id: client_id) : all
+    employees.active.average(:salary)&.round(2) || 0
+  end
+
+  # ===== CONSTANTS FOR DROPDOWNS =====
   EMPLOYMENT_TYPES = [
     ['W2 Employee', 'W2'],
     ['1099 Contractor', '1099']
@@ -149,4 +355,31 @@ class Employee < ApplicationRecord
     ['Active', 'active'],
     ['Inactive', 'inactive']
   ].freeze
+  
+  # ===== CALLBACKS =====
+  
+  # Set defaults before validation
+  before_validation :set_defaults, on: :create
+  
+  # Clean phone numbers before saving
+  before_save :clean_phone_numbers
+  
+  private
+  
+  def set_defaults
+    self.employment_type ||= 'W2'
+    self.pay_frequency ||= 'biweekly'
+    self.status ||= 'active'
+    self.federal_withholding_allowances ||= 0
+    self.state_withholding_allowances ||= 0
+    self.federal_additional_withholding ||= 0.0
+    self.state_additional_withholding ||= 0.0
+    self.hire_date ||= Date.current if hire_date.blank?
+  end
+  
+  def clean_phone_numbers
+    # Remove any non-digits from phone numbers before saving
+    self.phone = phone.gsub(/\D/, '') if phone.present?
+    self.emergency_contact_phone = emergency_contact_phone.gsub(/\D/, '') if emergency_contact_phone.present?
+  end
 end
