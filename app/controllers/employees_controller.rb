@@ -1,15 +1,12 @@
-# app/controllers/employees_controller.rb - Complete replacement (Fixed)
-
+# app/controllers/employees_controller.rb
 class EmployeesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_employee, only: [:show, :edit, :update, :destroy]
 
-  # GET /employees (redirect to dashboard)
   def index
     redirect_to dashboard_path
   end
 
-  # GET /employees/:id (Employee Profile Page)  
   def show
     @client = @employee.client
     
@@ -24,9 +21,9 @@ class EmployeesController < ApplicationController
     end
   end
 
-  # GET /employees/new
   def new
     @employee = Employee.new
+    @employee.client_id = params[:client_id]
     @employee.hire_date = Date.current
     @employee.employment_type = 'W2'
     @employee.pay_frequency = 'biweekly'
@@ -35,10 +32,9 @@ class EmployeesController < ApplicationController
     @employee.state_withholding_allowances = 0
     @employee.federal_additional_withholding = 0.0
     @employee.state_additional_withholding = 0.0
-    render :edit  # Use the same enhanced form
+    render :edit
   end
 
-  # POST /employees
   def create
     @employee = Employee.new(employee_params)
     
@@ -50,17 +46,14 @@ class EmployeesController < ApplicationController
       redirect_to dashboard_path(client_id: @employee.client_id), notice: 'Employee added successfully.'
     else
       puts "❌ FAILED: Create errors: #{@employee.errors.full_messages}"
-      # CRITICAL: Render form with errors instead of redirecting
       render :edit, status: :unprocessable_entity
     end
   end
 
-  # GET /employees/:id/edit
   def edit
-    # Employee is set by before_action - this will use the enhanced form
+    # Employee is set by before_action
   end
 
-  # PATCH/PUT /employees/:id - THE CRITICAL FIX IS HERE
   def update
     puts "=== DEBUG: Update attempt ==="
     puts "Employee ID: #{@employee.id}"
@@ -78,14 +71,12 @@ class EmployeesController < ApplicationController
     end
   end
 
-  # DELETE /employees/:id
   def destroy
     client_id = @employee.client_id
     @employee.destroy
     redirect_to dashboard_path(client_id: client_id), notice: 'Employee deleted successfully.'
   end
 
-  # Bulk operations for future use
   def bulk_update
     employee_ids = params[:employee_ids] || []
     action_type = params[:bulk_action]
@@ -105,7 +96,6 @@ class EmployeesController < ApplicationController
     redirect_to dashboard_path(client_id: params[:client_id]), notice: message
   end
 
-  # CSV export for future use
   def export_csv
     @selected_client_id = params[:client_id]
     @selected_client = Client.find(@selected_client_id) if @selected_client_id
@@ -130,19 +120,18 @@ class EmployeesController < ApplicationController
     @employee = Employee.find(params[:id])
   end
 
-  # UPDATED: Complete parameter permissions for all Step L fields
   def employee_params
     params.require(:employee).permit(
-      # Basic Information (existing + Step L)
+      # Basic Information
       :name, :title, :department, :hire_date, :employment_type, :status, :client_id,
       # Payroll Information  
       :salary, :hours_worked, :pay_frequency, :marital_status,
       # Contact Information
       :address, :phone, :email, :emergency_contact_name, :emergency_contact_phone,
-      # Tax Information (no encryption for now)
+      # Tax Information
       :ssn, :federal_withholding_allowances, :federal_additional_withholding,
       :state_withholding_allowances, :state_additional_withholding,
-      # Banking Information (no encryption for now)
+      # Banking Information (for future use)
       :bank_routing_number, :bank_account_number
     )
   end

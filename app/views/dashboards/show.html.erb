@@ -8,7 +8,7 @@
           { class: "client-select", onchange: "this.form.submit();" } %>
     <% end %>
     
-    <!-- NEW: Search and Filter Bar -->
+    <!-- Search and Filter Bar -->
     <div class="search-filter-bar">
       <%= form_with url: dashboard_path, method: :get, local: true, class: "search-form" do |f| %>
         <%= f.hidden_field :client_id, value: @selected_client&.id %>
@@ -23,9 +23,10 @@
       <button id="manage-clients-btn" class="btn btn-primary">
         <span class="btn-icon">🏢</span> Manage Clients
       </button>
-      <button id="add-employee-btn" class="btn btn-primary">
+      <!-- FIXED: Direct link instead of onclick -->
+      <%= link_to new_employee_path(client_id: @selected_client&.id), class: 'btn btn-primary', id: 'add-employee-btn' do %>
         <span class="btn-icon">+</span> Add New Employee
-      </button>
+      <% end %>
     </div>
   </div>
 
@@ -122,7 +123,8 @@
                 <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
                 <td class="td-actions">
                   <div class="action-buttons">
-                    <button class="btn-edit" onclick="openEditModal(<%= employee.id %>, '<%= employee.name %>', <%= employee.salary %>, <%= employee.hours_worked %>, '<%= employee.title %>')">Edit</button>
+                    <!-- CRITICAL FIX: Changed from onclick to direct link -->
+                    <%= link_to 'Edit', edit_employee_path(employee), class: 'btn-edit' %>
                     <%= button_to "Delete", employee_path(employee), method: :delete, 
                         data: { confirm: "Are you sure?" }, class: "btn-delete" %>
                   </div>
@@ -136,99 +138,18 @@
       <div class="empty-state">
         <p>No employees found for the selected client.</p>
         <% if @selected_client %>
-          <button type="button" class="action-btn primary-btn" onclick="openAddModal()">
-            Add First Employee
-          </button>
+          <!-- FIXED: Direct link instead of onclick -->
+          <%= link_to 'Add First Employee', new_employee_path(client_id: @selected_client.id), class: 'action-btn primary-btn' %>
         <% end %>
       </div>
     <% end %>
   </div>
 </div>
 
-<!-- Enhanced Employee Modal with Tabs -->
-<div id="employee-modal" class="modal">
-  <div class="modal-content enhanced-modal">
-    <div class="modal-header">
-      <h3 id="modal-title">Add New Employee</h3>
-      <span class="modal-close">&times;</span>
-    </div>
-    <div class="modal-body">
-      <!-- Tab Navigation -->
-      <div class="tab-navigation">
-        <button type="button" class="tab-btn active" onclick="showTab('basic')">Basic Info</button>
-        <button type="button" class="tab-btn" onclick="showTab('payroll')">Payroll</button>
-        <button type="button" class="tab-btn" onclick="showTab('contact')">Contact</button>
-      </div>
+<!-- REMOVED: Employee Modal completely deleted from here -->
+<!-- This was the entire <div id="employee-modal"> section that was causing the problem -->
 
-      <form id="employee-form" action="/employees" method="post" class="employee-form enhanced-form">
-        <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
-        <input type="hidden" id="employee-id" name="employee_id" value="">
-        <input type="hidden" id="form-method" name="_method" value="post">
-        
-        <!-- Basic Info Tab -->
-        <div id="basicTab" class="tab-content active">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Full Name *</label>
-              <input type="text" id="employee-name" name="employee[name]" placeholder="Enter employee name" class="form-input" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Job Title *</label>
-              <select id="employee-title" name="employee[title]" class="form-input" required>
-                <option value="">Select Title</option>
-                <option value="Manager">Manager</option>
-                <option value="Developer">Developer</option>
-                <option value="Designer">Designer</option>
-                <option value="HR">HR</option>
-                <option value="Sales">Sales</option>
-                <option value="Support">Support</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Payroll Tab -->
-        <div id="payrollTab" class="tab-content">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Annual Salary *</label>
-              <input type="number" id="employee-salary" name="employee[salary]" placeholder="$0.00" class="form-input" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Hours Worked</label>
-              <input type="number" id="employee-hours" name="employee[hours_worked]" step="0.1" placeholder="40" class="form-input">
-            </div>
-          </div>
-        </div>
-
-        <!-- Contact Tab -->
-        <div id="contactTab" class="tab-content">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="tel" id="employee-phone" name="employee[phone]" 
-                     placeholder="(XXX) XXX-XXXX" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">SSN</label>
-              <input type="text" id="employee-ssn" name="employee[ssn]" 
-                     placeholder="XXX-XX-XXXX" maxlength="11" class="form-input">
-            </div>
-          </div>
-        </div>
-        
-        <input type="hidden" name="employee[client_id]" value="<%= @selected_client&.id %>">
-        
-        <div class="form-actions">
-          <button type="button" class="btn btn-cancel">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="submit-btn">Add Employee</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Your Existing Client Management Modal (keeping exactly as is) -->
+<!-- KEEP: Client Management Modal (unchanged) -->
 <div id="client-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -441,83 +362,54 @@
     color: #2c5aa0;
     text-decoration: underline;
   }
+
+  /* Fix for link buttons */
+  a.btn-edit,
+  a.btn-primary {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  a.btn-edit {
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: #10b981;
+    color: white;
+    transition: all 0.3s ease;
+  }
+
+  a.btn-edit:hover {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+
+  .action-btn.primary-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+  }
+
+  .action-btn.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
 </style>
 
 <script>
-  // Enhanced JavaScript
-  document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('employee-modal');
-    const addBtn = document.getElementById('add-employee-btn');
-    const closeBtn = document.querySelector('.modal-close');
-    const cancelBtn = document.querySelector('.btn-cancel');
-    const form = document.getElementById('employee-form');
-    const modalTitle = document.getElementById('modal-title');
-    const submitBtn = document.getElementById('submit-btn');
-    const formMethod = document.getElementById('form-method');
-    
-    // Add New Employee button
-    addBtn.onclick = function() {
-      modalTitle.textContent = 'Add New Employee';
-      submitBtn.textContent = 'Add Employee';
-      form.action = '/employees';
-      formMethod.value = 'post';
-      form.reset();
-      document.getElementById('employee-id').value = '';
-      modal.style.display = 'block';
-      showTab('basic');
-    }
-    
-    // Close modal functions
-    closeBtn.onclick = function() {
-      modal.style.display = 'none';
-    }
-    
-    cancelBtn.onclick = function() {
-      modal.style.display = 'none';
-    }
-    
-    window.onclick = function(event) {
-      if (event.target == modal) {
-        modal.style.display = 'none';
-      }
-    }
-  });
-  
-  // Tab functionality
-  function showTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
-    // Show selected tab
-    document.getElementById(tabName + 'Tab').classList.add('active');
-    event.target.classList.add('active');
-  }
-  
-  // Edit Employee function
-  function openEditModal(id, name, salary, hours, title) {
-    const modal = document.getElementById('employee-modal');
-    const form = document.getElementById('employee-form');
-    const modalTitle = document.getElementById('modal-title');
-    const submitBtn = document.getElementById('submit-btn');
-    const formMethod = document.getElementById('form-method');
-    
-    modalTitle.textContent = 'Edit Employee';
-    submitBtn.textContent = 'Update Employee';
-    form.action = '/employees/' + id;
-    formMethod.value = 'patch';
-    
-    document.getElementById('employee-id').value = id;
-    document.getElementById('employee-name').value = name;
-    document.getElementById('employee-salary').value = salary;
-    document.getElementById('employee-hours').value = hours;
-    document.getElementById('employee-title').value = title || '';
-    
-    modal.style.display = 'block';
-    showTab('basic');
-  }
+  // REMOVED: All employee modal JavaScript functions
+  // No more: openEditModal(), openAddModal(), showTab(), etc.
 
-  // Keep ALL your existing Client Management JavaScript exactly as is
+  // KEEP: Client Management JavaScript (unchanged)
   document.getElementById('manage-clients-btn').onclick = function() {
     document.getElementById('client-modal').style.display = 'block';
     showClientList();
@@ -602,12 +494,10 @@
   // Close client modal when clicking outside
   window.onclick = function(event) {
     const clientModal = document.getElementById('client-modal');
-    const employeeModal = document.getElementById('employee-modal');
     
     if (event.target == clientModal) {
       closeClientModal();
-    } else if (event.target == employeeModal) {
-      employeeModal.style.display = 'none';
     }
+    // REMOVED: employee modal click outside handler
   }
 </script>
