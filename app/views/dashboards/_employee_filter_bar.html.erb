@@ -1,0 +1,36 @@
+<!-- app/views/dashboards/_employee_filter_bar.html.erb -->
+<div class="employee-filter-bar">
+  <%= form_with url: dashboard_path, method: :get, local: false, class: "employee-search-form", id: "employee-filter-form" do |f| %>
+    <%= f.hidden_field :client_id, value: selected_client&.id %>
+    
+    <div class="filter-row">
+      <div class="search-group">
+        <%= f.text_field :search, 
+            placeholder: "Search employees by name or title...", 
+            value: current_search, 
+            class: "search-input",
+            id: "employee-search-input" %>
+      </div>
+      
+      <div class="filter-group">
+        <%= f.select :status, 
+            [['All Statuses', ''], ['Active', 'active'], ['Inactive', 'inactive']], 
+            { selected: current_status }, 
+            { class: "filter-select", id: "employee-status-select" } %>
+      </div>
+      
+      <div class="action-group">
+        <%= f.submit 'Filter', class: 'btn btn-primary btn-filter', id: 'filter-submit-btn' %>
+        <% if has_filters %>
+          <button type="button" id="clear-filters-btn" class="btn btn-secondary btn-clear">Clear</button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Loading indicator -->
+<div id="filter-loading" class="filter-loading" style="display: none;">
+  <div class="loading-spinner"></div>
+  <span>Filtering employees...</span>
+</div>

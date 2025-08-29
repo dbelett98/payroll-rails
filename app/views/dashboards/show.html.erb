@@ -8,23 +8,11 @@
           { class: "client-select", onchange: "this.form.submit();" } %>
     <% end %>
     
-    <!-- Search and Filter Bar -->
-    <div class="search-filter-bar">
-      <%= form_with url: dashboard_path, method: :get, local: true, class: "search-form" do |f| %>
-        <%= f.hidden_field :client_id, value: @selected_client&.id %>
-        <%= f.text_field :search, placeholder: "Search employees...", value: params[:search], class: "search-input" %>
-        <%= f.select :status, [['All', ''], ['Active', 'active'], ['Inactive', 'inactive']], 
-                    { selected: params[:status] }, { class: "filter-select" } %>
-        <%= f.submit 'Filter', class: 'btn btn-primary' %>
-      <% end %>
-    </div>
-    
     <div style="display: flex; gap: 1rem;">
       <button id="manage-clients-btn" class="btn btn-primary">
         <span class="btn-icon">🏢</span> Manage Clients
       </button>
-      <!-- FIXED: Direct link instead of onclick -->
-      <%= link_to new_employee_path(client_id: @selected_client&.id), class: 'btn btn-primary', id: 'add-employee-btn' do %>
+      <%= link_to new_employee_path(client_id: @selected_client&.id), class: 'btn btn-primary' do %>
         <span class="btn-icon">+</span> Add New Employee
       <% end %>
     </div>
@@ -32,7 +20,7 @@
 
   <!-- Enhanced Main Dashboard Grid -->
   <div class="dashboard-grid">
-    <!-- Client Overview - Enhanced with more stats -->
+    <!-- Client Overview -->
     <div class="card card-overview">
       <div class="card-header">
         <span class="card-icon">📊</span>
@@ -42,22 +30,22 @@
         <div class="overview-stats">
           <div class="stat-item">
             <span class="stat-label">Total Employees</span>
-            <span class="stat-value"><%= @employees.count %></span>
+            <span class="stat-value"><%= @selected_client&.employees&.count || 0 %></span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Active</span>
-            <span class="stat-value"><%= @employees.select { |e| e.respond_to?(:status) && e.status == 'active' }.count rescue @employees.count %></span>
+            <span class="stat-value"><%= @selected_client&.employees&.where(status: 'active')&.count || 0 %></span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Total Payroll</span>
-            <span class="stat-value">$<%= number_with_delimiter(@employees.sum(&:calculate_pay).round(2)) %></span>
+            <span class="stat-value">$<%= number_with_delimiter((@selected_client&.employees&.sum(&:calculate_pay) || 0).round(2)) %></span>
           </div>
         </div>
         <p class="overview-description">Comprehensive client analytics and employee insights</p>
       </div>
     </div>
 
-    <!-- Payroll Status - Keep existing -->
+    <!-- Payroll Status -->
     <div class="card card-status">
       <div class="card-header">
         <span class="card-icon">💰</span>
@@ -72,7 +60,7 @@
       </div>
     </div>
 
-    <!-- Reports - Keep existing -->
+    <!-- Reports -->
     <div class="card card-reports">
       <div class="card-header">
         <span class="card-icon">📈</span>
@@ -89,67 +77,41 @@
     </div>
   </div>
 
-  <!-- Enhanced Employee Directory -->
-  <div class="employee-section">
+  <!-- Enhanced Employee Directory with AJAX Updates -->
+  <div class="employee-section" id="employee-directory">
     <div class="section-header">
-      <h2 class="section-title">
+      <h2 class="section-title" id="employee-section-title">
         <span class="section-icon">👥</span>
         Employee Directory
+        <% if @has_filters %>
+          <span class="filter-indicator" id="filter-indicator">
+            (Filtered: <%= @employees.count %> of <%= @selected_client&.employees&.count || 0 %>)
+          </span>
+        <% end %>
       </h2>
     </div>
+
+    <!-- AJAX-Enabled Filter Bar -->
+    <div id="employee-filter-container">
+      <%= render 'employee_filter_bar', 
+          selected_client: @selected_client,
+          current_search: @current_search,
+          current_status: @current_status,
+          has_filters: @has_filters,
+          employees: @employees %>
+    </div>
     
-    <% if @employees.any? %>
-      <div class="table-container">
-        <table class="employee-table">
-          <thead>
-            <tr>
-              <th class="th-name">Name</th>
-              <th class="th-title">Title</th>
-              <th class="th-hours">Hours</th>
-              <th class="th-salary">Salary</th>
-              <th class="th-pay">Pay</th>
-              <th class="th-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @employees.each do |employee| %>
-              <tr>
-                <td class="td-name">
-                  <%= link_to employee.name, employee_path(employee), class: 'employee-name-link' %>
-                </td>
-                <td class="td-title"><%= employee.title || 'Not specified' %></td>
-                <td class="td-hours"><%= number_with_precision(employee.hours_worked, precision: 1) %></td>
-                <td class="td-salary">$<%= number_with_delimiter(employee.salary) %></td>
-                <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
-                <td class="td-actions">
-                  <div class="action-buttons">
-                    <!-- CRITICAL FIX: Changed from onclick to direct link -->
-                    <%= link_to 'Edit', edit_employee_path(employee), class: 'btn-edit' %>
-                    <%= button_to "Delete", employee_path(employee), method: :delete, 
-                        data: { confirm: "Are you sure?" }, class: "btn-delete" %>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <div class="empty-state">
-        <p>No employees found for the selected client.</p>
-        <% if @selected_client %>
-          <!-- FIXED: Direct link instead of onclick -->
-          <%= link_to 'Add First Employee', new_employee_path(client_id: @selected_client.id), class: 'action-btn primary-btn' %>
-        <% end %>
-      </div>
-    <% end %>
+    <!-- AJAX-Updated Employee Table -->
+    <div id="employees-table-container">
+      <%= render 'employees_table', 
+          employees: @employees, 
+          selected_client: @selected_client,
+          has_filters: @has_filters %>
+    </div>
   </div>
 </div>
 
-<!-- REMOVED: Employee Modal completely deleted from here -->
-<!-- This was the entire <div id="employee-modal"> section that was causing the problem -->
-
-<!-- KEEP: Client Management Modal (unchanged) -->
+<!-- Client Management Modal (Keep unchanged) -->
 <div id="client-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -241,72 +203,186 @@
 </div>
 
 <style>
-  /* Enhanced styles for tabbed modal */
-  .enhanced-modal {
-    max-width: 700px;
-    max-height: 90vh;
-    overflow-y: auto;
+  /* Employee Filter Bar Styles */
+  .employee-filter-bar {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
   
-  .tab-navigation {
-    display: flex;
-    border-bottom: 2px solid #f1f5f9;
-    margin-bottom: 2rem;
-  }
-  
-  .tab-btn {
-    padding: 1rem 1.5rem;
-    background: none;
-    border: none;
-    color: #4a5568;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border-bottom: 3px solid transparent;
-  }
-  
-  .tab-btn.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
-  }
-  
-  .tab-content {
-    display: none;
-  }
-  
-  .tab-content.active {
-    display: block;
-  }
-  
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .search-filter-bar {
+  .filter-row {
     display: flex;
     gap: 1rem;
     align-items: end;
     flex-wrap: wrap;
   }
   
-  .search-input {
+  .search-group {
+    flex: 2;
+    min-width: 250px;
+  }
+  
+  .filter-group {
     flex: 1;
-    min-width: 200px;
+    min-width: 150px;
+  }
+  
+  .action-group {
+    flex: 0;
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .search-input {
+    width: 100%;
     padding: 0.75rem 1rem;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+  }
+  
+  .search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
   
   .filter-select {
+    width: 100%;
     padding: 0.75rem 1rem;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
     background: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
   }
   
-  /* Keep all your existing client modal styles */
+  .filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  
+  .btn-filter {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+  
+  .btn-clear {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    white-space: nowrap;
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 2px solid #e5e7eb;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-clear:hover {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  
+  .filter-indicator {
+    font-size: 0.9rem;
+    color: #667eea;
+    font-weight: normal;
+    margin-left: 0.5rem;
+  }
+  
+  .empty-state-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  /* AJAX Loading Styles */
+  .filter-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    color: #0369a1;
+    font-size: 0.95rem;
+  }
+  
+  .loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #bae6fd;
+    border-top: 2px solid #0369a1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Smooth updates */
+  #employees-table-container {
+    transition: opacity 0.3s ease;
+  }
+  
+  #employees-table-container.updating {
+    opacity: 0.6;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .filter-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .search-group,
+    .filter-group {
+      min-width: auto;
+    }
+    
+    .action-group {
+      justify-content: stretch;
+    }
+    
+    .btn-filter,
+    .btn-clear {
+      flex: 1;
+    }
+    
+    .empty-state-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .empty-state-actions .btn {
+      width: 100%;
+      max-width: 300px;
+    }
+  }
+
+  /* Keep all existing styles from original file */
+  .enhanced-modal {
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
   .client-list {
     max-height: 400px;
     overflow-y: auto;
@@ -406,98 +482,243 @@
 </style>
 
 <script>
-  // REMOVED: All employee modal JavaScript functions
-  // No more: openEditModal(), openAddModal(), showTab(), etc.
+// AJAX Employee Filtering System
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 AJAX Employee Filtering System Initialized');
+  
+  // Handle form submission via AJAX
+  function handleEmployeeFilter(e) {
+    if (e) e.preventDefault();
+    
+    const form = document.getElementById('employee-filter-form');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    
+    console.log('🔍 Filtering with params:', params.toString());
+    
+    // Show loading state
+    showLoadingState();
+    
+    // Make AJAX request
+    fetch(`${form.action}?${params}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Filter response received:', data);
+      updateEmployeeDirectory(data);
+    })
+    .catch(error => {
+      console.error('❌ Filter error:', error);
+      hideLoadingState();
+    });
+  }
+  
+  // Clear filters function
+  function clearEmployeeFilters() {
+    const clientId = document.querySelector('input[name="client_id"]')?.value;
+    
+    console.log('🗑️ Clearing filters for client:', clientId);
+    
+    showLoadingState();
+    
+    fetch(`/dashboard?client_id=${clientId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Clear response received:', data);
+      updateEmployeeDirectory(data);
+    })
+    .catch(error => {
+      console.error('❌ Clear error:', error);
+      hideLoadingState();
+    });
+  }
+  
+  // Show loading state
+  function showLoadingState() {
+    const loading = document.getElementById('filter-loading');
+    const tableContainer = document.getElementById('employees-table-container');
+    
+    if (loading) loading.style.display = 'flex';
+    if (tableContainer) tableContainer.classList.add('updating');
+  }
+  
+  // Hide loading state
+  function hideLoadingState() {
+    const loading = document.getElementById('filter-loading');
+    const tableContainer = document.getElementById('employees-table-container');
+    
+    if (loading) loading.style.display = 'none';
+    if (tableContainer) tableContainer.classList.remove('updating');
+  }
+  
+  // Update the employee directory with new data
+  function updateEmployeeDirectory(data) {
+    // Update filter bar
+    const filterContainer = document.getElementById('employee-filter-container');
+    if (filterContainer && data.filter_bar_html) {
+      filterContainer.innerHTML = data.filter_bar_html;
+      attachFilterHandlers(); // Reattach event handlers
+    }
+    
+    // Update table
+    const tableContainer = document.getElementById('employees-table-container');
+    if (tableContainer && data.employees_html) {
+      tableContainer.innerHTML = data.employees_html;
+      attachClearHandlers(); // Reattach clear button handlers in empty state
+    }
+    
+    // Update section title filter indicator
+    const title = document.getElementById('employee-section-title');
+    if (title) {
+      const filterIndicator = title.querySelector('.filter-indicator');
+      if (data.has_filters && data.employee_count !== undefined) {
+        const indicatorText = `(Filtered: ${data.employee_count} of ${data.total_count})`;
+        if (filterIndicator) {
+          filterIndicator.textContent = indicatorText;
+        } else {
+          title.innerHTML += `<span class="filter-indicator">${indicatorText}</span>`;
+        }
+      } else {
+        if (filterIndicator) {
+          filterIndicator.remove();
+        }
+      }
+    }
+    
+    hideLoadingState();
+    console.log('🎯 Employee directory updated successfully');
+  }
+  
+  // Attach event handlers to filter form
+  function attachFilterHandlers() {
+    const form = document.getElementById('employee-filter-form');
+    const clearBtn = document.getElementById('clear-filters-btn');
+    
+    if (form) {
+      form.addEventListener('submit', handleEmployeeFilter);
+      console.log('🔗 Filter form handler attached');
+    }
+    
+    if (clearBtn) {
+      clearBtn.addEventListener('click', clearEmployeeFilters);
+      console.log('🔗 Clear button handler attached');
+    }
+  }
+  
+  // Attach event handlers to clear buttons in empty state
+  function attachClearHandlers() {
+    const clearEmptyBtn = document.getElementById('clear-filters-empty');
+    if (clearEmptyBtn) {
+      clearEmptyBtn.addEventListener('click', clearEmployeeFilters);
+      console.log('🔗 Empty state clear button handler attached');
+    }
+  }
+  
+  // Initial attachment
+  attachFilterHandlers();
+  attachClearHandlers();
+});
 
-  // KEEP: Client Management JavaScript (unchanged)
-  document.getElementById('manage-clients-btn').onclick = function() {
-    document.getElementById('client-modal').style.display = 'block';
-    showClientList();
+// Client Management JavaScript (Keep unchanged)
+document.getElementById('manage-clients-btn').onclick = function() {
+  document.getElementById('client-modal').style.display = 'block';
+  showClientList();
+}
+
+function closeClientModal() {
+  document.getElementById('client-modal').style.display = 'none';
+}
+
+function showClientList() {
+  document.getElementById('client-list').style.display = 'block';
+  document.getElementById('client-form').style.display = 'none';
+  document.getElementById('client-modal-title').textContent = 'Manage Clients';
+}
+
+function setupInputMasking() {
+  // EIN Masking: XX-XXXXXXX
+  const einInput = document.getElementById('client-ein');
+  if (einInput) {
+    einInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+      if (value.length >= 2) {
+        value = value.substring(0, 2) + '-' + value.substring(2, 9);
+      }
+      e.target.value = value;
+    });
   }
   
-  function closeClientModal() {
-    document.getElementById('client-modal').style.display = 'none';
-  }
-  
-  function showClientList() {
-    document.getElementById('client-list').style.display = 'block';
-    document.getElementById('client-form').style.display = 'none';
-    document.getElementById('client-modal-title').textContent = 'Manage Clients';
-  }
-  
-  function setupInputMasking() {
-    // EIN Masking: XX-XXXXXXX
-    const einInput = document.getElementById('client-ein');
-    if (einInput) {
-      einInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-        if (value.length >= 2) {
-          value = value.substring(0, 2) + '-' + value.substring(2, 9);
+  // Phone Masking: (XXX) XXX-XXXX
+  const phoneInput = document.getElementById('client-phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+      if (value.length > 0) {
+        if (value.length <= 3) {
+          value = `(${value}`;
+        } else if (value.length <= 6) {
+          value = `(${value.substring(0, 3)}) ${value.substring(3)}`;
+        } else {
+          value = `(${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6, 10)}`;
         }
-        e.target.value = value;
-      });
-    }
-    
-    // Phone Masking: (XXX) XXX-XXXX
-    const phoneInput = document.getElementById('client-phone');
-    if (phoneInput) {
-      phoneInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-        if (value.length > 0) {
-          if (value.length <= 3) {
-            value = `(${value}`;
-          } else if (value.length <= 6) {
-            value = `(${value.substring(0, 3)}) ${value.substring(3)}`;
-          } else {
-            value = `(${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6, 10)}`;
-          }
-        }
-        e.target.value = value;
-      });
-    }
+      }
+      e.target.value = value;
+    });
   }
+}
+
+function showClientForm() {
+  document.getElementById('client-list').style.display = 'none';
+  document.getElementById('client-form').style.display = 'block';
+  document.getElementById('client-modal-title').textContent = 'Add New Client';
   
-  function showClientForm() {
-    document.getElementById('client-list').style.display = 'none';
-    document.getElementById('client-form').style.display = 'block';
-    document.getElementById('client-modal-title').textContent = 'Add New Client';
-    
-    const form = document.getElementById('client-form-element');
-    form.action = '/clients';
-    document.getElementById('client-form-method').value = 'post';
-    document.getElementById('client-submit-btn').textContent = 'Add Client';
-    form.reset();
-    
-    setupInputMasking();
-  }
+  const form = document.getElementById('client-form-element');
+  form.action = '/clients';
+  document.getElementById('client-form-method').value = 'post';
+  document.getElementById('client-submit-btn').textContent = 'Add Client';
+  form.reset();
   
-  function editClient(id, name, bankAccount, ein, address, phone, email) {
-    showClientForm();
-    document.getElementById('client-modal-title').textContent = 'Edit Client';
-    
-    const form = document.getElementById('client-form-element');
-    form.action = '/clients/' + id;
-    document.getElementById('client-form-method').value = 'patch';
-    document.getElementById('client-submit-btn').textContent = 'Update Client';
-    
-    document.getElementById('client-id').value = id;
-    document.getElementById('client-name').value = name;
-    document.getElementById('client-bank').value = bankAccount || '';
-    document.getElementById('client-ein').value = ein || '';
-    document.getElementById('client-address').value = address || '';
-    document.getElementById('client-phone').value = phone || '';
-    document.getElementById('client-email').value = email || '';
-    
-    setupInputMasking();
-  }
+  setupInputMasking();
+}
+
+function editClient(id, name, bankAccount, ein, address, phone, email) {
+  showClientForm();
+  document.getElementById('client-modal-title').textContent = 'Edit Client';
   
-  // Close client modal when clicking outside
-  window.onclick = function(event) {
-    const clientModal = document.getElementById('client-modal');
-    
-    if (event.target == clientModal) {
-      closeClientModal();
-    }
-    // REMOVED: employee modal click outside handler
+  const form = document.getElementById('client-form-element');
+  form.action = '/clients/' + id;
+  document.getElementById('client-form-method').value = 'patch';
+  document.getElementById('client-submit-btn').textContent = 'Update Client';
+  
+  document.getElementById('client-id').value = id;
+  document.getElementById('client-name').value = name;
+  document.getElementById('client-bank').value = bankAccount || '';
+  document.getElementById('client-ein').value = ein || '';
+  document.getElementById('client-address').value = address || '';
+  document.getElementById('client-phone').value = phone || '';
+  document.getElementById('client-email').value = email || '';
+  
+  setupInputMasking();
+}
+
+// Close client modal when clicking outside
+window.onclick = function(event) {
+  const clientModal = document.getElementById('client-modal');
+  if (event.target == clientModal) {
+    closeClientModal();
   }
+}
 </script>

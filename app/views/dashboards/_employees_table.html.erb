@@ -1,0 +1,52 @@
+<!-- app/views/dashboards/_employees_table.html.erb -->
+<% if employees.any? %>
+  <div class="table-container">
+    <table class="employee-table">
+      <thead>
+        <tr>
+          <th class="th-name">Name</th>
+          <th class="th-title">Title</th>
+          <th class="th-hours">Hours</th>
+          <th class="th-salary">Salary</th>
+          <th class="th-pay">Pay</th>
+          <th class="th-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% employees.each do |employee| %>
+          <tr>
+            <td class="td-name">
+              <%= link_to employee.name, employee_path(employee), class: 'employee-name-link' %>
+            </td>
+            <td class="td-title"><%= employee.title || 'Not specified' %></td>
+            <td class="td-hours"><%= number_with_precision(employee.hours_worked, precision: 1) %></td>
+            <td class="td-salary">$<%= number_with_delimiter(employee.salary) %></td>
+            <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
+            <td class="td-actions">
+              <div class="action-buttons">
+                <%= link_to 'Edit', edit_employee_path(employee), class: 'btn-edit' %>
+                <%= button_to "Delete", employee_path(employee), method: :delete, 
+                    data: { confirm: "Are you sure?" }, class: "btn-delete" %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="empty-state">
+    <% if defined?(has_filters) && has_filters %>
+      <p>No employees found matching your search criteria.</p>
+      <div class="empty-state-actions">
+        <button type="button" id="clear-filters-empty" class="btn btn-secondary">Clear Filters</button>
+        <%= link_to 'Add New Employee', new_employee_path(client_id: selected_client&.id), class: 'btn btn-primary' %>
+      </div>
+    <% else %>
+      <p>No employees found for the selected client.</p>
+      <% if selected_client %>
+        <%= link_to 'Add First Employee', new_employee_path(client_id: selected_client.id), class: 'action-btn primary-btn' %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

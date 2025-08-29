@@ -1,4 +1,4 @@
-<!-- Replace entire app/views/employees/edit.html.erb content -->
+<!-- Comprehensive Employee Modal - This is the ONLY modal that should appear -->
 <div class="modal-overlay" onclick="closeModal()">
   <div class="modal-content" onclick="event.stopPropagation()">
     <div class="modal-header">
@@ -149,14 +149,34 @@
             <%= form.telephone_field :phone, class: "form-input #{'error' if @employee.errors[:phone].any?}" %>
           </div>
           <div class="form-group">
-            <%= form.label :ssn, "SSN", class: "form-label" %>
-            <%= form.text_field :ssn, class: "form-input #{'error' if @employee.errors[:ssn].any?}", placeholder: "XXX-XX-XXXX" %>
+            <%= form.label :email, class: "form-label" %>
+            <%= form.email_field :email, class: "form-input #{'error' if @employee.errors[:email].any?}" %>
           </div>
         </div>
 
         <div class="form-group full-width">
           <%= form.label :address, class: "form-label" %>
           <%= form.text_area :address, rows: 3, class: "form-input #{'error' if @employee.errors[:address].any?}" %>
+        </div>
+
+        <div class="form-section-header">Tax Information</div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :ssn, "SSN", class: "form-label" %>
+            <%= form.text_field :ssn, class: "form-input #{'error' if @employee.errors[:ssn].any?}", placeholder: "XXX-XX-XXXX" %>
+          </div>
+        </div>
+
+        <div class="form-section-header">Banking Information (For Direct Deposit)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :bank_routing_number, "Routing Number", class: "form-label" %>
+            <%= form.text_field :bank_routing_number, class: "form-input #{'error' if @employee.errors[:bank_routing_number].any?}", placeholder: "9 digits" %>
+          </div>
+          <div class="form-group">
+            <%= form.label :bank_account_number, "Account Number", class: "form-label" %>
+            <%= form.text_field :bank_account_number, class: "form-input #{'error' if @employee.errors[:bank_account_number].any?}", placeholder: "4-17 digits" %>
+          </div>
         </div>
 
         <div class="form-section-header">Emergency Contact</div>
@@ -188,6 +208,8 @@ function closeModal() {
 
 // Tab functionality
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('🎯 Comprehensive Employee Modal Loaded Successfully');
+  
   const tabButtons = document.querySelectorAll('.tab-button');
   const tabContents = document.querySelectorAll('.tab-content');
 
@@ -204,5 +226,16 @@ document.addEventListener('DOMContentLoaded', function() {
       document.querySelector(`.tab-content[data-tab="${tabName}"]`).classList.add('active');
     });
   });
+
+  // Focus on first input for better UX
+  const firstInput = document.querySelector('.form-input');
+  if (firstInput) {
+    firstInput.focus();
+  }
+});
+
+// Prevent accidental modal close on form interaction
+document.querySelector('.modal-content').addEventListener('click', function(e) {
+  e.stopPropagation();
 });
 </script>
