@@ -506,10 +506,10 @@
 </style>
 
 <script>
-  function editEmployee() {
-    // Redirect back to dashboard with edit modal
-    window.location.href = `/dashboard?client_id=<%= @client.id %>&edit_employee=<%= @employee.id %>`;
-  }
+ function editEmployee() {
+  // Go directly to the employee edit form
+  wwindow.location.href = `/employees/<%= @employee.id %>/edit?return_to=<%= request.fullpath %>`;
+}
   
   function generatePayStub() {
     alert('Pay stub generation will be available in Step Q: Pay Stub Generation');

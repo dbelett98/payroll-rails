@@ -63,7 +63,9 @@ class EmployeesController < ApplicationController
     
     if @employee.update(employee_params)
       puts "✅ SUCCESS: Employee updated! New title: #{@employee.reload.title}"
-      redirect_to dashboard_path(client_id: @employee.client_id), notice: 'Employee updated successfully.'
+      # Check if we have a return path, otherwise default to employee show page
+      return_path = params[:return_to].presence || employee_path(@employee)
+      redirect_to return_path, notice: 'Employee updated successfully.'
     else
       puts "❌ FAILED: Update errors: #{@employee.errors.full_messages}"
       # CRITICAL FIX: Render the form with errors instead of redirecting
