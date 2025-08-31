@@ -506,10 +506,11 @@
 </style>
 
 <script>
- function editEmployee() {
-  // Go directly to the employee edit form
-  wwindow.location.href = `/employees/<%= @employee.id %>/edit?return_to=<%= request.fullpath %>`;
-}
+  function editEmployee() {
+    // Go directly to the employee edit form with return path (URL encoded for safety)
+    const returnPath = encodeURIComponent('<%= request.fullpath %>');
+    window.location.href = `/employees/<%= @employee.id %>/edit?return_to=${returnPath}`;
+  }
   
   function generatePayStub() {
     alert('Pay stub generation will be available in Step Q: Pay Stub Generation');
