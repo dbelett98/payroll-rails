@@ -4,6 +4,10 @@ class Employee < ApplicationRecord
   belongs_to :client
   has_many :payroll_runs, dependent: :destroy
   
+  encrypts :ssn, deterministic: false
+  encrypts :bank_routing_number, deterministic: false  
+  encrypts :bank_account_number, deterministic: false
+  
   # NOTE: Removed encrypts for now - will add in Step M when we set up Rails credentials
   # encrypts :ssn
   # encrypts :bank_routing_number

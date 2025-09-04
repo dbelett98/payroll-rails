@@ -5,6 +5,8 @@ Rails.application.routes.draw do
     collection do
       patch :bulk_update
       get :export_csv
+      get :import_form                    # Show import form
+      post :import_employees              # Process import file
     end
   end
   resources :clients, only: [:index, :new, :create, :edit, :update, :destroy]
