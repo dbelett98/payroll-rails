@@ -1,4 +1,3 @@
-# app/controllers/employees_controller.rb
 class EmployeesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_employee, only: [:show, :edit, :update, :destroy]
@@ -62,13 +61,12 @@ class EmployeesController < ApplicationController
     puts "Raw params: #{params[:employee].inspect}"
     
     if @employee.update(employee_params)
-      puts "✅ SUCCESS: Employee updated! New title: #{@employee.reload.title}"
-      # Check if we have a return path, otherwise default to employee show page
-      return_path = params[:return_to].presence || employee_path(@employee)
-      redirect_to return_path, notice: 'Employee updated successfully.'
+      puts "✅ SUCCESS: Employee updated!"
+      
+      return_to = params[:return_to].presence || dashboard_path(client_id: @employee.client_id)
+      redirect_to return_to, notice: 'Employee updated successfully.'
     else
       puts "❌ FAILED: Update errors: #{@employee.errors.full_messages}"
-      # CRITICAL FIX: Render the form with errors instead of redirecting
       render :edit, status: :unprocessable_entity
     end
   end
@@ -79,52 +77,15 @@ class EmployeesController < ApplicationController
     redirect_to dashboard_path(client_id: client_id), notice: 'Employee deleted successfully.'
   end
 
-  def bulk_update
-    employee_ids = params[:employee_ids] || []
-    action_type = params[:bulk_action]
-    
-    case action_type
-    when 'activate'
-      Employee.where(id: employee_ids).update_all(status: 'active')
-      message = "#{employee_ids.length} employees activated."
-    when 'deactivate'
-      Employee.where(id: employee_ids).update_all(status: 'inactive')
-      message = "#{employee_ids.length} employees deactivated."
-    when 'change_department'
-      Employee.where(id: employee_ids).update_all(department: params[:new_department])
-      message = "Department updated for #{employee_ids.length} employees."
-    end
-    
-    redirect_to dashboard_path(client_id: params[:client_id]), notice: message
-  end
+  # ===== NEW IMPORT METHODS FOR STEP 5B =====
 
-  def export_csv
-    @selected_client_id = params[:client_id]
-    @selected_client = Client.find(@selected_client_id) if @selected_client_id
-    
-    if @selected_client
-      @employees = @selected_client.employees.order(:name)
-      
-      respond_to do |format|
-        format.csv { 
-          send_data generate_csv(@employees), 
-          filename: "#{@selected_client.name.gsub(/[^0-9A-Za-z.\-]/, '_')}_employees_#{Date.current}.csv" 
-        }
-      end
-    else
-      redirect_to dashboard_path, alert: 'Please select a client first.'
-    end
-  end
-
-  # ===== STEP 4C: NEW IMPORT METHODS =====
-  
   def import_form
     @client_id = params[:client_id]
     @client = Client.find(@client_id) if @client_id
     redirect_to dashboard_path, alert: 'Please select a client first.' unless @client
   end
 
-  def import_employees
+  def import_preview
     @client_id = params[:client_id]
     @client = Client.find(@client_id) if @client_id
     
@@ -147,20 +108,57 @@ class EmployeesController < ApplicationController
     end
 
     begin
-      import_results = process_csv_import(file, @client)
+      # Parse CSV for preview without saving
+      @preview_data = parse_csv_for_preview(file, @client)
+      @existing_employees = @client.employees.pluck(:name).map(&:downcase)
       
-      if import_results[:errors].any?
-        flash[:alert] = "Import completed with #{import_results[:errors].count} errors. #{import_results[:success_count]} employees imported successfully."
-        flash[:import_errors] = import_results[:errors]
-      else
-        flash[:notice] = "Successfully imported #{import_results[:success_count]} employees!"
-      end
+      # Detect duplicates
+      @duplicate_warnings = detect_duplicates(@preview_data, @existing_employees)
       
+      render :import_preview
     rescue => e
-      Rails.logger.error "Import error: #{e.message}"
-      flash[:alert] = "Import failed: #{e.message}"
+      redirect_to import_form_employees_path(client_id: @client_id), 
+                  alert: "Error reading CSV file: #{e.message}"
     end
+  end
+
+  def import_employees
+    @client_id = params[:client_id]
+    @client = Client.find(@client_id) if @client_id
     
+    unless @client
+      redirect_to dashboard_path, alert: 'Please select a client first.'
+      return
+    end
+
+    # Get selected employee indices from form
+    selected_indices = params[:selected_employees]&.keys&.map(&:to_i) || []
+    
+    if selected_indices.empty?
+      redirect_to import_form_employees_path(client_id: @client_id), 
+                  alert: 'No employees selected for import.'
+      return
+    end
+
+    # Recreate preview data and import only selected employees
+    file_data = params[:csv_data] # We'll pass this in the form
+    preview_data = JSON.parse(file_data) if file_data
+    
+    unless preview_data
+      redirect_to import_form_employees_path(client_id: @client_id), 
+                  alert: 'Import session expired. Please upload the file again.'
+      return
+    end
+
+    import_results = import_selected_employees(preview_data, selected_indices, @client)
+    
+    if import_results[:errors].any?
+      flash[:alert] = "Import completed with #{import_results[:errors].count} errors. #{import_results[:success_count]} employees imported successfully."
+      flash[:import_errors] = import_results[:errors]
+    else
+      flash[:notice] = "Successfully imported #{import_results[:success_count]} employees!"
+    end
+
     redirect_to dashboard_path(client_id: @client_id)
   end
 
@@ -172,82 +170,136 @@ class EmployeesController < ApplicationController
 
   def employee_params
     params.require(:employee).permit(
-      # Basic Information
-      :name, :title, :department, :hire_date, :employment_type, :status, :client_id,
-      # Payroll Information  
-      :salary, :hours_worked, :pay_frequency, :marital_status,
-      # Contact Information
-      :address, :phone, :email, :emergency_contact_name, :emergency_contact_phone,
-      # Tax Information
-      :ssn, :federal_withholding_allowances, :federal_additional_withholding,
-      :state_withholding_allowances, :state_additional_withholding,
-      # Banking Information (for future use)
-      :bank_routing_number, :bank_account_number
+      :client_id, :name, :title, :hours_worked, :salary, :phone, :email,
+      :ssn, :routing_number, :account_number, :hire_date, :employment_type,
+      :department, :pay_frequency, :status, :federal_withholding_allowances,
+      :state_withholding_allowances, :federal_additional_withholding,
+      :state_additional_withholding
     )
   end
 
-  def generate_csv(employees)
+  # ===== CSV IMPORT HELPER METHODS =====
+
+  def parse_csv_for_preview(file, client)
     require 'csv'
-    CSV.generate(headers: true) do |csv|
-      csv << [
-        'Name', 'Title', 'Department', 'Employment Type', 'Status',
-        'Hire Date', 'Salary', 'Pay Frequency', 'Hours Worked', 
-        'Phone', 'Email', 'Address', 'Emergency Contact', 'Emergency Phone'
-      ]
+    
+    preview_data = []
+    
+    CSV.foreach(file.path, headers: true, header_converters: :symbol) do |row|
+      employee_data = {
+        name: row[:name]&.strip,
+        title: row[:title]&.strip,
+        salary: parse_salary(row[:salary]),
+        hours_worked: row[:hours]&.to_f || 40,
+        department: row[:department]&.strip,
+        phone: row[:phone]&.strip,
+        email: row[:email]&.strip,
+        hire_date: parse_date(row[:hire_date]) || Date.current,
+        employment_type: parse_employment_type(row[:employment_type]) || 'W2',
+        status: parse_status(row[:status]) || 'active'
+      }
       
-      employees.each do |employee|
-        csv << [
-          employee.name, employee.title, employee.department,
-          employee.employment_type, employee.status, employee.hire_date,
-          employee.salary, employee.pay_frequency, employee.hours_worked,
-          employee.phone, employee.email, employee.address,
-          employee.emergency_contact_name, employee.emergency_contact_phone
-        ]
+      # Add validation info for preview
+      employee_data[:valid] = validate_employee_data(employee_data)
+      employee_data[:errors] = get_validation_errors(employee_data)
+      
+      preview_data << employee_data
+    end
+    
+    preview_data
+  end
+
+  def detect_duplicates(preview_data, existing_employees)
+    warnings = []
+    
+    # Check for duplicates within the CSV
+    names_in_csv = preview_data.map { |emp| emp[:name]&.downcase }.compact
+    duplicate_names_in_csv = names_in_csv.select { |name| names_in_csv.count(name) > 1 }.uniq
+    
+    duplicate_names_in_csv.each do |name|
+      warnings << {
+        type: 'csv_duplicate',
+        message: "Multiple employees named '#{name.titleize}' found in CSV",
+        name: name
+      }
+    end
+    
+    # Check for duplicates against existing database
+    preview_data.each_with_index do |emp_data, index|
+      name = emp_data[:name]&.downcase
+      if existing_employees.include?(name)
+        warnings << {
+          type: 'database_duplicate',
+          message: "Employee '#{name.titleize}' already exists in database",
+          name: name,
+          index: index
+        }
       end
     end
+    
+    warnings
   end
-  
-  # ===== STEP 4C: NEW CSV IMPORT HELPER METHODS =====
-  
-  def process_csv_import(file, client)
-    require 'csv'
+
+  def import_selected_employees(preview_data, selected_indices, client)
     results = { success_count: 0, errors: [] }
     
-    CSV.foreach(file.path, headers: true) do |row|
-      row_number = $.  # CSV line number
+    selected_indices.each do |index|
+      next unless preview_data[index]
+      
+      employee_data = preview_data[index]
       
       begin
-        # Simple mapping - adjust column names as needed
+        # Parse hire_date safely
+        hire_date = begin
+          Date.parse(employee_data['hire_date'].to_s) if employee_data['hire_date']
+        rescue
+          Date.current
+        end || Date.current
+        
         employee = Employee.new(
           client: client,
-          name: row['Name']&.strip,
-          title: row['Title']&.strip,
-          salary: parse_salary(row['Salary']),
-          hours_worked: row['Hours']&.to_f || 40,
-          department: row['Department']&.strip,
-          phone: row['Phone']&.strip,
-          email: row['Email']&.strip,
-          hire_date: parse_date(row['Hire Date']) || Date.current,
-          employment_type: parse_employment_type(row['Employment Type']) || 'W2',
-          status: parse_status(row['Status']) || 'active'
+          name: employee_data['name'],
+          title: employee_data['title'],
+          salary: employee_data['salary'],
+          hours_worked: employee_data['hours_worked'],
+          department: employee_data['department'],
+          phone: employee_data['phone'],
+          email: employee_data['email'],
+          hire_date: hire_date,
+          employment_type: employee_data['employment_type'],
+          status: employee_data['status']
         )
         
         if employee.save
           results[:success_count] += 1
         else
-          error_msg = "Row #{row_number}: #{employee.errors.full_messages.join(', ')}"
+          error_msg = "#{employee_data['name']}: #{employee.errors.full_messages.join(', ')}"
           results[:errors] << error_msg
         end
         
       rescue => e
-        error_msg = "Row #{row_number}: #{e.message}"
+        error_msg = "#{employee_data['name']}: #{e.message}"
         results[:errors] << error_msg
       end
     end
     
     results
   end
-  
+
+  def validate_employee_data(data)
+    data[:name].present? && 
+    data[:salary].present? && 
+    data[:salary] > 0
+  end
+
+  def get_validation_errors(data)
+    errors = []
+    errors << "Name is required" if data[:name].blank?
+    errors << "Salary is required" if data[:salary].blank?
+    errors << "Salary must be greater than 0" if data[:salary].present? && data[:salary] <= 0
+    errors
+  end
+
   def parse_salary(salary_str)
     return nil if salary_str.blank?
     # Remove currency symbols and commas
@@ -257,7 +309,11 @@ class EmployeesController < ApplicationController
   
   def parse_date(date_str)
     return nil if date_str.blank?
-    Date.parse(date_str.to_s) rescue nil
+    begin
+      Date.parse(date_str.to_s)
+    rescue
+      nil
+    end
   end
   
   def parse_employment_type(type_str)

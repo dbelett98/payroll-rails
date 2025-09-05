@@ -6,6 +6,7 @@ Rails.application.routes.draw do
       patch :bulk_update
       get :export_csv
       get :import_form                    # Show import form
+      post :import_preview # NEW: Show CSV preview before importing
       post :import_employees              # Process import file
     end
   end
