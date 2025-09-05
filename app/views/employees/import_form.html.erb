@@ -1,0 +1,181 @@
+<!-- app/views/employees/import_form.html.erb -->
+<div class="import-wrapper">
+  <!-- Header -->
+  <div class="import-header">
+    <h1>Import Employees for <%= @client.name %></h1>
+    <p>Upload a CSV file to bulk import employee data</p>
+  </div>
+
+  <!-- Import Form -->
+  <div class="import-form-card">
+    <%= form_with url: import_employees_employees_path, method: :post, multipart: true, local: true, class: "import-form" do |form| %>
+      <%= form.hidden_field :client_id, value: @client.id %>
+      
+      <div class="form-group">
+        <%= form.label :file, "Select CSV File", class: "form-label" %>
+        <%= form.file_field :file, accept: ".csv", required: true, class: "file-input" %>
+        <p class="file-hint">Please select a CSV file with employee data</p>
+      </div>
+      
+      <div class="form-actions">
+        <%= link_to 'Cancel', dashboard_path(client_id: @client.id), class: 'btn btn-secondary' %>
+        <%= form.submit 'Import Employees', class: 'btn btn-primary' %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- CSV Format Guide -->
+  <div class="format-guide">
+    <h3>CSV Format Requirements</h3>
+    <p>Your CSV file should have these columns (Name, Title, and Salary are required):</p>
+    
+    <div class="sample-csv">
+      <table class="sample-table">
+        <thead>
+          <tr>
+            <th>Name*</th>
+            <th>Title*</th>
+            <th>Salary*</th>
+            <th>Department</th>
+            <th>Phone</th>
+            <th>Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>John Doe</td>
+            <td>Developer</td>
+            <td>75000</td>
+            <td>Engineering</td>
+            <td>(555) 123-4567</td>
+            <td>john@example.com</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <p><strong>*Required fields</strong></p>
+  </div>
+</div>
+
+<style>
+  .import-wrapper {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
+  
+  .import-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  .import-header h1 {
+    font-size: 2rem;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+  }
+  
+  .import-header p {
+    color: #718096;
+    font-size: 1.1rem;
+  }
+  
+  .import-form-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+  
+  .file-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  
+  .file-hint {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+  
+  .format-guide {
+    background: #f0f9ff;
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid #bae6fd;
+  }
+  
+  .format-guide h3 {
+    color: #0369a1;
+    margin-bottom: 1rem;
+  }
+  
+  .sample-csv {
+    margin: 1rem 0;
+  }
+  
+  .sample-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .sample-table th,
+  .sample-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .sample-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  
+  .btn-secondary {
+    background: #f8fafc;
+    color: #4b5563;
+    border: 2px solid #e2e8f0;
+  }
+</style>

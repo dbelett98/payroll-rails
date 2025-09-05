@@ -116,8 +116,54 @@ class EmployeesController < ApplicationController
     end
   end
 
-
+  # ===== STEP 4C: NEW IMPORT METHODS =====
   
+  def import_form
+    @client_id = params[:client_id]
+    @client = Client.find(@client_id) if @client_id
+    redirect_to dashboard_path, alert: 'Please select a client first.' unless @client
+  end
+
+  def import_employees
+    @client_id = params[:client_id]
+    @client = Client.find(@client_id) if @client_id
+    
+    unless @client
+      redirect_to dashboard_path, alert: 'Please select a client first.'
+      return
+    end
+
+    unless params[:file].present?
+      redirect_to import_form_employees_path(client_id: @client_id), alert: 'Please select a file to import.'
+      return
+    end
+
+    file = params[:file]
+    
+    # Validate file is CSV
+    unless file.original_filename.downcase.end_with?('.csv')
+      redirect_to import_form_employees_path(client_id: @client_id), alert: 'Please upload a CSV file.'
+      return
+    end
+
+    begin
+      import_results = process_csv_import(file, @client)
+      
+      if import_results[:errors].any?
+        flash[:alert] = "Import completed with #{import_results[:errors].count} errors. #{import_results[:success_count]} employees imported successfully."
+        flash[:import_errors] = import_results[:errors]
+      else
+        flash[:notice] = "Successfully imported #{import_results[:success_count]} employees!"
+      end
+      
+    rescue => e
+      Rails.logger.error "Import error: #{e.message}"
+      flash[:alert] = "Import failed: #{e.message}"
+    end
+    
+    redirect_to dashboard_path(client_id: @client_id)
+  end
+
   private
 
   def set_employee
@@ -159,5 +205,68 @@ class EmployeesController < ApplicationController
         ]
       end
     end
+  end
+  
+  # ===== STEP 4C: NEW CSV IMPORT HELPER METHODS =====
+  
+  def process_csv_import(file, client)
+    require 'csv'
+    results = { success_count: 0, errors: [] }
+    
+    CSV.foreach(file.path, headers: true) do |row|
+      row_number = $.  # CSV line number
+      
+      begin
+        # Simple mapping - adjust column names as needed
+        employee = Employee.new(
+          client: client,
+          name: row['Name']&.strip,
+          title: row['Title']&.strip,
+          salary: parse_salary(row['Salary']),
+          hours_worked: row['Hours']&.to_f || 40,
+          department: row['Department']&.strip,
+          phone: row['Phone']&.strip,
+          email: row['Email']&.strip,
+          hire_date: parse_date(row['Hire Date']) || Date.current,
+          employment_type: parse_employment_type(row['Employment Type']) || 'W2',
+          status: parse_status(row['Status']) || 'active'
+        )
+        
+        if employee.save
+          results[:success_count] += 1
+        else
+          error_msg = "Row #{row_number}: #{employee.errors.full_messages.join(', ')}"
+          results[:errors] << error_msg
+        end
+        
+      rescue => e
+        error_msg = "Row #{row_number}: #{e.message}"
+        results[:errors] << error_msg
+      end
+    end
+    
+    results
+  end
+  
+  def parse_salary(salary_str)
+    return nil if salary_str.blank?
+    # Remove currency symbols and commas
+    cleaned = salary_str.to_s.gsub(/[\$,]/, '')
+    cleaned.to_f if cleaned.match?(/^\d+\.?\d*$/)
+  end
+  
+  def parse_date(date_str)
+    return nil if date_str.blank?
+    Date.parse(date_str.to_s) rescue nil
+  end
+  
+  def parse_employment_type(type_str)
+    return 'W2' if type_str.blank?
+    type_str.to_s.upcase.include?('1099') ? '1099' : 'W2'
+  end
+  
+  def parse_status(status_str)
+    return 'active' if status_str.blank?
+    status_str.to_s.downcase == 'inactive' ? 'inactive' : 'active'
   end
 end

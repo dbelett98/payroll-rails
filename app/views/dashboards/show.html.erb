@@ -7,20 +7,18 @@
           { prompt: "Select Client" },
           { class: "client-select", onchange: "this.form.submit();" } %>
     <% end %>
-    
-    <div style="display: flex; gap: 1rem;">
+  
+    <div style="display: flex; gap: 1rem; align-items: center;">
       <button id="manage-clients-btn" class="btn btn-primary">
         <span class="btn-icon">🏢</span> Manage Clients
       </button>
-
       
-    <% if @selected_client %>
-      <%# <%= link_to import_form_employees_path(client_id: @selected_client.id), class: 'btn btn-success' do %>
-      <%# <span class="btn-icon">📊</span> Import Employees %>
-      <%# <% end %>
-    <% end %>
-    
-
+      <% if @selected_client %>
+        <%= link_to import_form_employees_path(client_id: @selected_client.id), class: 'btn btn-success' do %>
+          <span class="btn-icon">📊</span> Import Employees
+        <% end %>
+      <% end %>
+      
       <%= link_to new_employee_path(client_id: @selected_client&.id), class: 'btn btn-primary' do %>
         <span class="btn-icon">+</span> Add New Employee
       <% end %>
