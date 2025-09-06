@@ -1,4 +1,4 @@
-<!-- app/views/employees/import_preview.html.erb -->
+<!-- app/views/employees/import_preview.html.erb - Enhanced for Step M completion -->
 
 <div class="dashboard-wrapper">
   <div class="import-preview-container">
@@ -11,20 +11,72 @@
       <p class="import-subtitle">Review and select employees to import from your CSV file</p>
     </div>
 
-    <!-- Duplicate Warnings -->
+    <!-- Enhanced Duplicate Warnings -->
     <% if @duplicate_warnings.any? %>
-      <div class="duplicate-warnings">
+      <div class="duplicate-warnings enhanced">
         <div class="warning-header">
           <span class="warning-icon">⚠️</span>
-          <h3>Duplicate Detection</h3>
+          <h3>Enhanced Duplicate Detection</h3>
+          <span class="warning-count"><%= @duplicate_warnings.count %> potential duplicate(s) found</span>
         </div>
-        <div class="warning-list">
-          <% @duplicate_warnings.each do |warning| %>
-            <div class="warning-item <%= warning[:type] %>">
-              <span class="warning-badge">
-                <%= warning[:type] == 'csv_duplicate' ? 'CSV' : 'DB' %>
-              </span>
-              <%= warning[:message] %>
+        
+        <div class="warning-summary">
+          <div class="warning-types">
+            <% exact_matches = @duplicate_warnings.select { |w| w[:category] == 'exact_name' || w[:category] == 'exact_email' || w[:type] == 'csv_duplicate' } %>
+            <% fuzzy_matches = @duplicate_warnings.select { |w| w[:category] == 'fuzzy_name' } %>
+            
+            <% if exact_matches.any? %>
+              <div class="warning-type-card exact">
+                <div class="warning-type-icon">🎯</div>
+                <div class="warning-type-content">
+                  <h4>Exact Matches</h4>
+                  <p><%= exact_matches.count %> employees with identical names or emails</p>
+                </div>
+              </div>
+            <% end %>
+            
+            <% if fuzzy_matches.any? %>
+              <div class="warning-type-card fuzzy">
+                <div class="warning-type-icon">🔍</div>
+                <div class="warning-type-content">
+                  <h4>Similar Names</h4>
+                  <p><%= fuzzy_matches.count %> employees with similar names detected</p>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+        <div class="warning-list enhanced">
+          <% @duplicate_warnings.each_with_index do |warning, index| %>
+            <div class="warning-item enhanced <%= warning[:type] %> <%= warning[:category] %>" data-warning-index="<%= index %>">
+              <div class="warning-content">
+                <div class="warning-badge-container">
+                  <span class="warning-badge <%= warning[:type] %>">
+                    <%= warning[:type] == 'csv_duplicate' ? 'CSV' : 'DB' %>
+                  </span>
+                  <% if warning[:category] == 'fuzzy_name' && warning[:confidence] %>
+                    <span class="confidence-badge">
+                      <%= warning[:confidence] %>% match
+                    </span>
+                  <% end %>
+                </div>
+                
+                <div class="warning-message">
+                  <%= warning[:message] %>
+                </div>
+                
+                <% if warning[:type] == 'database_duplicate' && warning[:existing_employee_id] %>
+                  <button type="button" 
+                          class="compare-btn" 
+                          onclick="openDuplicateComparison(<%= warning[:csv_index] %>, <%= warning[:existing_employee_id] %>)"
+                          data-csv-index="<%= warning[:csv_index] %>"
+                          data-existing-id="<%= warning[:existing_employee_id] %>">
+                    <span class="compare-icon">🔍</span>
+                    Compare Details
+                  </button>
+                <% end %>
+              </div>
             </div>
           <% end %>
         </div>
@@ -142,7 +194,8 @@
           </thead>
           <tbody id="employee-table-body">
             <% @preview_data.each_with_index do |employee, index| %>
-              <tr class="employee-row <%= 'has-errors' unless employee[:valid] %>" 
+              <% employee_warnings = @duplicate_warnings.select { |w| w[:csv_index] == index } %>
+              <tr class="employee-row <%= 'has-errors' unless employee[:valid] %> <%= 'has-duplicates' if employee_warnings.any? %>" 
                   data-index="<%= index %>" 
                   data-name="<%= employee[:name]&.downcase %>"
                   data-title="<%= employee[:title]&.downcase %>"
@@ -150,7 +203,8 @@
                   data-employment-type="<%= employee[:employment_type]&.downcase %>"
                   data-status="<%= employee[:status]&.downcase %>"
                   data-valid="<%= employee[:valid] %>"
-                  data-salary="<%= employee[:salary] || 0 %>">
+                  data-salary="<%= employee[:salary] || 0 %>"
+                  data-has-duplicates="<%= employee_warnings.any? %>">
                 <td class="select-col">
                   <%= check_box_tag "selected_employees[#{index}]", "1", employee[:valid], 
                       class: "employee-checkbox", 
@@ -162,6 +216,15 @@
                     <%= employee[:name] %>
                     <% unless employee[:valid] %>
                       <span class="error-indicator" title="<%= employee[:errors].join(', ') %>">❌</span>
+                    <% end %>
+                    <% if employee_warnings.any? %>
+                      <span class="duplicate-indicator" title="Potential duplicate detected">
+                        <% if employee_warnings.any? { |w| w[:category] == 'fuzzy_name' } %>
+                          🔍
+                        <% else %>
+                          ⚠️
+                        <% end %>
+                      </span>
                     <% end %>
                   </div>
                 </td>
@@ -185,10 +248,35 @@
                   </span>
                 </td>
                 <td class="warnings-cell">
-                  <% warnings_for_employee = @duplicate_warnings.select { |w| w[:name] == employee[:name]&.downcase } %>
-                  <% if warnings_for_employee.any? %>
+                  <% if employee_warnings.any? %>
+                    <div class="warning-indicators enhanced">
+                      <% employee_warnings.each do |warning| %>
+                        <span class="warning-badge-small <%= warning[:type] %> <%= warning[:category] %>" 
+                              title="<%= warning[:message] %>"
+                              data-duplicate-type="<%= warning[:type] %>">
+                          <% if warning[:category] == 'fuzzy_name' && warning[:confidence] %>
+                            ~<%= warning[:confidence] %>%
+                          <% else %>
+                            <%= warning[:type] == 'csv_duplicate' ? 'CSV' : 'DB' %>
+                          <% end %>
+                        </span>
+                        <% if warning[:type] == 'database_duplicate' && warning[:existing_employee_id] %>
+                          <button type="button" 
+                                  class="mini-compare-btn" 
+                                  onclick="openDuplicateComparison(<%= warning[:csv_index] %>, <%= warning[:existing_employee_id] %>)"
+                                  title="Compare with existing employee">
+                            🔍
+                          </button>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  
+                  <!-- Legacy duplicate detection (fallback for old format) -->
+                  <% legacy_warnings = @duplicate_warnings.select { |w| w[:name] == employee[:name]&.downcase && !w.key?(:csv_index) } %>
+                  <% if legacy_warnings.any? && employee_warnings.empty? %>
                     <div class="warning-indicators">
-                      <% warnings_for_employee.each do |warning| %>
+                      <% legacy_warnings.each do |warning| %>
                         <span class="warning-badge-small <%= warning[:type] %>" 
                               title="<%= warning[:message] %>"
                               data-duplicate-type="<%= warning[:type] %>">
@@ -197,6 +285,7 @@
                       <% end %>
                     </div>
                   <% end %>
+                  
                   <% unless employee[:valid] %>
                     <div class="error-messages">
                       <% employee[:errors].each do |error| %>
@@ -235,8 +324,11 @@
   </div>
 </div>
 
+<!-- Include the duplicate comparison modal -->
+<%= render 'duplicate_comparison_modal', csv_employee: {}, existing_employee: Employee.new, csv_index: 0 %>
+
 <style>
-  /* Enhanced Import Preview Styles */
+  /* Enhanced Import Preview Styles - Building on existing */
   .import-preview-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -270,7 +362,7 @@
     font-size: 1.1rem;
   }
 
-  /* Duplicate Warnings */
+  /* Enhanced Duplicate Warning Styles */
   .duplicate-warnings {
     background: #fef3c7;
     border: 1px solid #f59e0b;
@@ -279,28 +371,103 @@
     margin-bottom: 2rem;
   }
 
+  .duplicate-warnings.enhanced {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  }
+
   .warning-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   .warning-header h3 {
     color: #92400e;
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 600;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .warning-icon {
     font-size: 1.5rem;
   }
 
+  .warning-count {
+    background: #92400e;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .warning-summary {
+    margin-bottom: 1.5rem;
+  }
+
+  .warning-types {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+
+  .warning-type-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-left: 4px solid;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .warning-type-card.exact {
+    border-left-color: #ef4444;
+  }
+
+  .warning-type-card.fuzzy {
+    border-left-color: #f59e0b;
+  }
+
+  .warning-type-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  .warning-type-content h4 {
+    margin: 0 0 0.25rem 0;
+    color: #1f2937;
+    font-size: 1.1rem;
+  }
+
+  .warning-type-content p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+  }
+
   .warning-list {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .warning-list.enhanced {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .warning-item {
@@ -313,12 +480,49 @@
     border-left: 4px solid;
   }
 
-  .warning-item.csv_duplicate {
+  .warning-item.enhanced {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .warning-item.enhanced:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  .warning-item.csv_duplicate,
+  .warning-item.enhanced.csv_duplicate {
     border-left-color: #f59e0b;
   }
 
-  .warning-item.database_duplicate {
+  .warning-item.database_duplicate,
+  .warning-item.enhanced.database_duplicate,
+  .warning-item.enhanced.exact_name,
+  .warning-item.enhanced.exact_email {
     border-left-color: #ef4444;
+  }
+
+  .warning-item.enhanced.fuzzy_name {
+    border-left-color: #f59e0b;
+  }
+
+  .warning-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .warning-badge-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
   }
 
   .warning-badge {
@@ -328,6 +532,46 @@
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 600;
+  }
+
+  .confidence-badge {
+    background: #f59e0b;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .warning-message {
+    flex: 1;
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .compare-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .compare-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  .compare-icon {
+    font-size: 1rem;
   }
 
   /* Enhanced Import Controls */
@@ -562,6 +806,11 @@
     background: #fef2f2;
   }
 
+  .employee-row.has-duplicates {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+  }
+
   .employee-row.hidden {
     display: none;
   }
@@ -592,6 +841,11 @@
 
   .error-indicator {
     font-size: 0.875rem;
+  }
+
+  .duplicate-indicator {
+    margin-left: 0.5rem;
+    font-size: 1.1rem;
   }
 
   .salary-cell {
@@ -643,6 +897,13 @@
     margin-bottom: 0.5rem;
   }
 
+  .warning-indicators.enhanced {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
   .warning-badge-small {
     padding: 0.125rem 0.375rem;
     border-radius: 4px;
@@ -659,6 +920,28 @@
   .warning-badge-small.database_duplicate {
     background: #ef4444;
     color: white;
+  }
+
+  .warning-badge-small.fuzzy_name {
+    background: #f59e0b;
+    color: white;
+    font-size: 0.7rem;
+  }
+
+  .mini-compare-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 0.25rem;
+    transition: background 0.2s ease;
+  }
+
+  .mini-compare-btn:hover {
+    background: #1d4ed8;
   }
 
   .error-messages {
@@ -763,6 +1046,23 @@
 
   /* Responsive Design */
   @media (max-width: 768px) {
+    .warning-types {
+      grid-template-columns: 1fr;
+    }
+
+    .warning-content {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .warning-badge-container {
+      justify-content: center;
+    }
+
+    .compare-btn {
+      justify-content: center;
+    }
+
     .control-row,
     .filter-row {
       flex-direction: column;
@@ -797,12 +1097,14 @@
 </style>
 
 <script>
+// Enhanced Import Preview System with Duplicate Comparison
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Enhanced Import Preview System Initialized');
   
   // State variables
   let currentSort = { column: null, direction: null };
   let activeFilters = {};
+  let csvData = <%= @preview_data.to_json.html_safe %>;
   
   // Elements
   const headerCheckbox = document.getElementById('header-checkbox');
@@ -835,6 +1137,218 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize
   updateCounts();
+  
+  // ===== DUPLICATE COMPARISON FUNCTIONALITY =====
+  
+  window.openDuplicateComparison = function(csvIndex, existingEmployeeId) {
+    console.log('🔍 Opening duplicate comparison:', { csvIndex, existingEmployeeId });
+    
+    // Show loading state
+    showComparisonLoading();
+    
+    // Make AJAX request to get comparison data
+    fetch('/employees/compare_duplicate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        csv_data: JSON.stringify(csvData),
+        csv_index: csvIndex,
+        existing_employee_id: existingEmployeeId,
+        client_id: '<%= @client.id %>'
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Comparison data received:', data);
+      showDuplicateComparisonModal(data, csvIndex, existingEmployeeId);
+    })
+    .catch(error => {
+      console.error('❌ Comparison error:', error);
+      alert('Error loading comparison data. Please try again.');
+      hideComparisonLoading();
+    });
+  };
+  
+  function showComparisonLoading() {
+    console.log('Loading comparison...');
+  }
+  
+  function hideComparisonLoading() {
+    console.log('Hiding comparison loading...');
+  }
+  
+  function showDuplicateComparisonModal(data, csvIndex, existingEmployeeId) {
+    const modal = document.getElementById('duplicate-comparison-modal');
+    if (!modal) {
+      console.error('Comparison modal not found');
+      return;
+    }
+    
+    // Update modal content with comparison data
+    updateModalContent(data.csv_employee, data.existing_employee);
+    
+    // Show modal
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    
+    // Store current comparison data
+    window.currentComparison = {
+      csvIndex: csvIndex,
+      existingEmployeeId: existingEmployeeId,
+      csvEmployee: data.csv_employee,
+      existingEmployee: data.existing_employee
+    };
+    
+    // Update differences
+    updateDifferencesSummary(data.csv_employee, data.existing_employee);
+  }
+  
+  function updateModalContent(csvEmployee, existingEmployee) {
+    // Update CSV employee data
+    const csvElements = {
+      'csv-employee-name': csvEmployee.name || 'Not provided',
+      'csv-employee-title': csvEmployee.title || 'No title',
+      'csv-employee-email': csvEmployee.email || 'Not provided',
+      'csv-employee-phone': csvEmployee.phone || 'Not provided',
+      'csv-employee-department': csvEmployee.department || 'Not specified',
+      'csv-employee-salary': csvEmployee.salary ? `$${csvEmployee.salary.toLocaleString()}` : 'Not specified',
+      'csv-employee-hours': csvEmployee.hours_worked || 'Not specified',
+      'csv-employee-hire-date': csvEmployee.hire_date ? new Date(csvEmployee.hire_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not specified'
+    };
+    
+    Object.entries(csvElements).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    });
+    
+    // Update employment type and status with badges
+    const csvTypeElement = document.getElementById('csv-employee-type');
+    if (csvTypeElement) {
+      csvTypeElement.innerHTML = `<span class="employment-badge ${(csvEmployee.employment_type || 'w2').toLowerCase()}">${csvEmployee.employment_type || 'W2'}</span>`;
+    }
+    
+    const csvStatusElement = document.getElementById('csv-employee-status');
+    if (csvStatusElement) {
+      csvStatusElement.innerHTML = `<span class="status-badge ${(csvEmployee.status || 'active').toLowerCase()}">${(csvEmployee.status || 'Active').charAt(0).toUpperCase() + (csvEmployee.status || 'Active').slice(1)}</span>`;
+    }
+    
+    // Update existing employee data
+    const existingElements = {
+      'existing-employee-name': existingEmployee.name || 'Not provided',
+      'existing-employee-title': existingEmployee.title || 'No title',
+      'existing-employee-email': existingEmployee.email || 'Not provided',
+      'existing-employee-phone': existingEmployee.formatted_phone || 'Not provided',
+      'existing-employee-department': existingEmployee.department || 'Not specified',
+      'existing-employee-salary': existingEmployee.salary ? `$${existingEmployee.salary.toLocaleString()}` : 'Not specified',
+      'existing-employee-hours': existingEmployee.hours_worked || 'Not specified',
+      'existing-employee-hire-date': existingEmployee.hire_date ? new Date(existingEmployee.hire_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Not specified'
+    };
+    
+    Object.entries(existingElements).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    });
+    
+    // Update employment type and status with badges
+    const existingTypeElement = document.getElementById('existing-employee-type');
+    if (existingTypeElement) {
+      existingTypeElement.innerHTML = `<span class="employment-badge ${(existingEmployee.employment_type || 'w2').toLowerCase()}">${existingEmployee.employment_type || 'W2'}</span>`;
+    }
+    
+    const existingStatusElement = document.getElementById('existing-employee-status');
+    if (existingStatusElement) {
+      existingStatusElement.innerHTML = `<span class="status-badge ${(existingEmployee.status || 'active').toLowerCase()}">${(existingEmployee.status || 'Active').charAt(0).toUpperCase() + (existingEmployee.status || 'Active').slice(1)}</span>`;
+    }
+  }
+  
+  function updateDifferencesSummary(csvEmployee, existingEmployee) {
+    const differencesGrid = document.getElementById('differences-grid');
+    if (!differencesGrid) return;
+    
+    differencesGrid.innerHTML = '';
+    
+    const fields = ['name', 'title', 'email', 'phone', 'department', 'salary', 'hours_worked', 'employment_type', 'status', 'hire_date'];
+    let differencesFound = false;
+    
+    fields.forEach(field => {
+      const csvValue = csvEmployee[field];
+      const dbValue = existingEmployee[field];
+      
+      if (csvValue !== dbValue) {
+        differencesFound = true;
+        const differenceItem = document.createElement('div');
+        differenceItem.className = 'difference-item';
+        
+        differenceItem.innerHTML = `
+          <div class="difference-field">${field.replace('_', ' ').toUpperCase()}</div>
+          <div class="difference-values">
+            <div class="difference-value csv-value">CSV: ${csvValue || 'Not provided'}</div>
+            <div class="difference-value db-value">Database: ${dbValue || 'Not provided'}</div>
+          </div>
+        `;
+        
+        differencesGrid.appendChild(differenceItem);
+      }
+    });
+    
+    if (!differencesFound) {
+      differencesGrid.innerHTML = '<div class="no-differences">No significant differences detected</div>';
+    }
+  }
+  
+  // Modal action handlers
+  window.closeDuplicateModal = function() {
+    const modal = document.getElementById('duplicate-comparison-modal');
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = ''; // Restore scrolling
+    }
+  };
+  
+  window.proceedWithImport = function(csvIndex) {
+    console.log('✅ Proceeding with import for index:', csvIndex);
+    
+    // Check the checkbox for this employee
+    const checkbox = document.getElementById(`employee_${csvIndex}`);
+    if (checkbox) {
+      checkbox.checked = true;
+    }
+    
+    closeDuplicateModal();
+    updateCounts();
+  };
+  
+  window.updateExisting = function(existingEmployeeId, csvIndex) {
+    console.log('🔄 Updating existing employee:', { existingEmployeeId, csvIndex });
+    
+    // For now, we'll just show an alert. In a full implementation, 
+    // you'd want to create a merge/update workflow
+    alert('Update existing employee functionality will be implemented in the next phase. For now, you can choose to import anyway or cancel.');
+    
+    closeDuplicateModal();
+  };
+  
+  window.toggleDifferences = function() {
+    const content = document.getElementById('differences-content');
+    const toggle = document.getElementById('differences-toggle');
+    
+    if (content && toggle) {
+      if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        toggle.textContent = '▼';
+        toggle.classList.remove('expanded');
+      } else {
+        content.classList.add('expanded');
+        toggle.textContent = '▲';
+        toggle.classList.add('expanded');
+      }
+    }
+  };
+  
+  // ===== EXISTING FUNCTIONALITY (Selection, Filtering, etc.) =====
   
   // Selection handlers
   headerCheckbox.addEventListener('change', function() {
@@ -997,7 +1511,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Duplicate filter
       if (activeFilters.duplicate) {
-        const hasDuplicates = row.querySelector('[data-duplicate-type]') !== null;
+        const hasDuplicates = row.dataset.hasDuplicates === 'true';
         if (activeFilters.duplicate === 'duplicates' && !hasDuplicates) {
           isVisible = false;
         } else if (activeFilters.duplicate === 'no-duplicates' && hasDuplicates) {
@@ -1099,7 +1613,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update filtered count
     const visibleRows = document.querySelectorAll('.employee-row:not(.hidden)');
-    filteredCountSpan.textContent = visibleRows.length;
+    if (filteredCountSpan) {
+      filteredCountSpan.textContent = visibleRows.length;
+    }
   }
   
   function clearAllFilters() {

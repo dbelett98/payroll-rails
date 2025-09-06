@@ -1,0 +1,685 @@
+<!-- app/views/employees/_duplicate_comparison_modal.html.erb -->
+
+<div class="duplicate-comparison-modal" id="duplicate-comparison-modal">
+  <div class="modal-overlay" onclick="closeDuplicateModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h2>
+          <span class="comparison-icon">🔍</span>
+          Duplicate Employee Detected
+        </h2>
+        <button class="modal-close" onclick="closeDuplicateModal()">&times;</button>
+      </div>
+
+      <!-- Comparison Alert -->
+      <div class="comparison-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content">
+          <h3>Potential Duplicate Found</h3>
+          <p>We found an existing employee that may be the same person you're trying to import. Please review the details below and choose how to proceed.</p>
+        </div>
+      </div>
+
+      <!-- Side-by-Side Comparison -->
+      <div class="comparison-container">
+        
+        <!-- CSV Data Column -->
+        <div class="comparison-column csv-column">
+          <div class="column-header">
+            <span class="column-icon">📄</span>
+            <h3>CSV Import Data</h3>
+            <span class="data-source">New Employee</span>
+          </div>
+          
+          <div class="employee-card">
+            <div class="employee-name-section">
+              <h4 class="employee-name" id="csv-employee-name"><%= csv_employee['name'] %></h4>
+              <p class="employee-title" id="csv-employee-title"><%= csv_employee['title'] || 'No title' %></p>
+            </div>
+            
+            <div class="employee-details">
+              <div class="detail-row">
+                <span class="detail-label">Email</span>
+                <span class="detail-value" id="csv-employee-email"><%= csv_employee['email'] || 'Not provided' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Phone</span>
+                <span class="detail-value" id="csv-employee-phone"><%= csv_employee['phone'] || 'Not provided' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Department</span>
+                <span class="detail-value" id="csv-employee-department"><%= csv_employee['department'] || 'Not specified' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Salary</span>
+                <span class="detail-value salary" id="csv-employee-salary">
+                  <%= csv_employee['salary'] ? number_to_currency(csv_employee['salary']) : 'Not specified' %>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Hours</span>
+                <span class="detail-value" id="csv-employee-hours"><%= csv_employee['hours_worked'] || 'Not specified' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Employment Type</span>
+                <span class="detail-value" id="csv-employee-type">
+                  <span class="employment-badge <%= csv_employee['employment_type']&.downcase %>">
+                    <%= csv_employee['employment_type'] || 'W2' %>
+                  </span>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Status</span>
+                <span class="detail-value" id="csv-employee-status">
+                  <span class="status-badge <%= csv_employee['status']&.downcase %>">
+                    <%= csv_employee['status']&.titleize || 'Active' %>
+                  </span>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Hire Date</span>
+                <span class="detail-value" id="csv-employee-hire-date">
+                  <%= csv_employee['hire_date'] ? Date.parse(csv_employee['hire_date'].to_s).strftime('%B %d, %Y') : 'Not specified' rescue 'Invalid date' %>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VS Separator -->
+        <div class="vs-separator">
+          <div class="vs-circle">
+            <span class="vs-text">VS</span>
+          </div>
+          <div class="vs-line"></div>
+        </div>
+
+        <!-- Existing Employee Column -->
+        <div class="comparison-column existing-column">
+          <div class="column-header">
+            <span class="column-icon">👤</span>
+            <h3>Existing Employee</h3>
+            <span class="data-source">In Database</span>
+          </div>
+          
+          <div class="employee-card">
+            <div class="employee-name-section">
+              <h4 class="employee-name" id="existing-employee-name"><%= existing_employee.name %></h4>
+              <p class="employee-title" id="existing-employee-title"><%= existing_employee.title || 'No title' %></p>
+            </div>
+            
+            <div class="employee-details">
+              <div class="detail-row">
+                <span class="detail-label">Email</span>
+                <span class="detail-value" id="existing-employee-email"><%= existing_employee.email || 'Not provided' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Phone</span>
+                <span class="detail-value" id="existing-employee-phone"><%= existing_employee.formatted_phone %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Department</span>
+                <span class="detail-value" id="existing-employee-department"><%= existing_employee.department || 'Not specified' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Salary</span>
+                <span class="detail-value salary" id="existing-employee-salary">
+                  <%= number_to_currency(existing_employee.salary || 0) %>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Hours</span>
+                <span class="detail-value" id="existing-employee-hours"><%= existing_employee.hours_worked || 'Not specified' %></span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Employment Type</span>
+                <span class="detail-value" id="existing-employee-type">
+                  <span class="employment-badge <%= existing_employee.employment_type&.downcase %>">
+                    <%= existing_employee.employment_type || 'W2' %>
+                  </span>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Status</span>
+                <span class="detail-value" id="existing-employee-status">
+                  <span class="status-badge <%= existing_employee.status&.downcase %>">
+                    <%= existing_employee.status&.titleize || 'Active' %>
+                  </span>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Hire Date</span>
+                <span class="detail-value" id="existing-employee-hire-date">
+                  <%= existing_employee.hire_date&.strftime('%B %d, %Y') || 'Not specified' %>
+                </span>
+              </div>
+              <div class="detail-row created-info">
+                <span class="detail-label">Added to System</span>
+                <span class="detail-value"><%= existing_employee.created_at.strftime('%B %d, %Y') %></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="modal-actions">
+        <div class="action-group">
+          <h4>What would you like to do?</h4>
+          <p>Choose how to handle this potential duplicate:</p>
+        </div>
+        
+        <div class="action-buttons">
+          <button type="button" class="btn btn-secondary" onclick="closeDuplicateModal()">
+            <span class="btn-icon">❌</span>
+            Cancel Import
+            <small>Don't import this employee</small>
+          </button>
+          
+          <button type="button" class="btn btn-warning" onclick="proceedWithImport('<%= csv_index %>')">
+            <span class="btn-icon">➕</span>
+            Import Anyway
+            <small>Create as separate employee</small>
+          </button>
+          
+          <button type="button" class="btn btn-primary" onclick="updateExisting('<%= existing_employee.id %>', '<%= csv_index %>')">
+            <span class="btn-icon">🔄</span>
+            Update Existing
+            <small>Merge CSV data into existing employee</small>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Detailed Differences -->
+      <div class="differences-section">
+        <h4>
+          <span class="toggle-icon" onclick="toggleDifferences()" id="differences-toggle">▼</span>
+          Detailed Differences
+        </h4>
+        <div class="differences-content" id="differences-content">
+          <div class="differences-grid" id="differences-grid">
+            <!-- Differences will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Duplicate Comparison Modal Styles */
+  .duplicate-comparison-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+
+  .duplicate-comparison-modal .modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 95%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.4s ease-out;
+  }
+
+  .duplicate-comparison-modal .modal-header {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .duplicate-comparison-modal .modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .comparison-icon {
+    font-size: 1.8rem;
+  }
+
+  .duplicate-comparison-modal .modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+  }
+
+  .duplicate-comparison-modal .modal-close:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Comparison Alert */
+  .comparison-alert {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 2rem;
+    display: flex;
+    gap: 1rem;
+  }
+
+  .alert-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  .alert-content h3 {
+    color: #92400e;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+  }
+
+  .alert-content p {
+    color: #78350f;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* Comparison Container */
+  .comparison-container {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 2rem;
+    padding: 0 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .comparison-column {
+    background: #f8fafc;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #e2e8f0;
+  }
+
+  .csv-column {
+    border-color: #3b82f6;
+  }
+
+  .existing-column {
+    border-color: #10b981;
+  }
+
+  .column-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: white;
+  }
+
+  .csv-column .column-header {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+  }
+
+  .existing-column .column-header {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+  }
+
+  .column-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .column-icon {
+    font-size: 1.4rem;
+  }
+
+  .data-source {
+    font-size: 0.8rem;
+    font-weight: 500;
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+  }
+
+  .employee-card {
+    padding: 1.5rem;
+    background: white;
+  }
+
+  .employee-name-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .employee-name {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .employee-title {
+    margin: 0;
+    color: #6b7280;
+    font-style: italic;
+  }
+
+  .employee-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f9fafb;
+  }
+
+  .detail-row:last-child {
+    border-bottom: none;
+  }
+
+  .detail-label {
+    font-weight: 500;
+    color: #4b5563;
+    font-size: 0.9rem;
+  }
+
+  .detail-value {
+    color: #1f2937;
+    font-weight: 500;
+    text-align: right;
+  }
+
+  .detail-value.salary {
+    color: #059669;
+    font-weight: 600;
+  }
+
+  .created-info {
+    background: #f0f9ff;
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+  }
+
+  .created-info .detail-label,
+  .created-info .detail-value {
+    font-size: 0.8rem;
+    color: #1e40af;
+  }
+
+  /* VS Separator */
+  .vs-separator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .vs-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    z-index: 1;
+  }
+
+  .vs-text {
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
+
+  .vs-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    background: linear-gradient(to bottom, #e5e7eb, #fbbf24, #e5e7eb);
+    z-index: 0;
+  }
+
+  /* Action Buttons */
+  .modal-actions {
+    background: #f8fafc;
+    padding: 2rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .action-group {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .action-group h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1f2937;
+    font-size: 1.1rem;
+  }
+
+  .action-group p {
+    margin: 0;
+    color: #6b7280;
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .action-buttons .btn {
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .action-buttons .btn .btn-icon {
+    font-size: 1.5rem;
+  }
+
+  .action-buttons .btn small {
+    font-size: 0.8rem;
+    font-weight: normal;
+    opacity: 0.8;
+  }
+
+  .btn-warning {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white;
+  }
+
+  .btn-warning:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  }
+
+  /* Differences Section */
+  .differences-section {
+    background: #f9fafb;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .differences-section h4 {
+    margin: 0 0 1rem 0;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .toggle-icon {
+    transition: transform 0.3s ease;
+  }
+
+  .toggle-icon.expanded {
+    transform: rotate(180deg);
+  }
+
+  .differences-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .differences-content.expanded {
+    max-height: 400px;
+  }
+
+  .differences-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+
+  .difference-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #fbbf24;
+  }
+
+  .difference-field {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+  }
+
+  .difference-values {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .difference-value {
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .csv-value {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .db-value {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .comparison-container {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .vs-separator {
+      order: 2;
+      flex-direction: row;
+      height: 60px;
+    }
+
+    .vs-line {
+      top: 50%;
+      bottom: auto;
+      left: 0;
+      right: 0;
+      height: 2px;
+      width: auto;
+      transform: translateY(-50%);
+    }
+
+    .action-buttons {
+      grid-template-columns: 1fr;
+    }
+
+    .differences-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Badge Styles */
+  .employment-badge,
+  .status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .employment-badge.w2 {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .employment-badge.\31 099 {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+</style>

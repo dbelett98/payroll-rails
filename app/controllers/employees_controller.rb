@@ -1,3 +1,5 @@
+# app/controllers/employees_controller.rb - Enhanced for Step M completion
+
 class EmployeesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_employee, only: [:show, :edit, :update, :destroy]
@@ -77,7 +79,7 @@ class EmployeesController < ApplicationController
     redirect_to dashboard_path(client_id: client_id), notice: 'Employee deleted successfully.'
   end
 
-  # ===== NEW IMPORT METHODS FOR STEP 5B =====
+  # ===== ENHANCED IMPORT METHODS FOR STEP M COMPLETION =====
 
   def import_form
     @client_id = params[:client_id]
@@ -110,10 +112,10 @@ class EmployeesController < ApplicationController
     begin
       # Parse CSV for preview without saving
       @preview_data = parse_csv_for_preview(file, @client)
-      @existing_employees = @client.employees.pluck(:name).map(&:downcase)
+      @existing_employees = @client.employees.includes(:client).to_a
       
-      # Detect duplicates
-      @duplicate_warnings = detect_duplicates(@preview_data, @existing_employees)
+      # ENHANCED: Detect duplicates with fuzzy matching and email matching
+      @duplicate_warnings = detect_enhanced_duplicates(@preview_data, @existing_employees)
       
       render :import_preview
     rescue => e
@@ -162,6 +164,36 @@ class EmployeesController < ApplicationController
     redirect_to dashboard_path(client_id: @client_id)
   end
 
+  # ===== NEW: DUPLICATE COMPARISON ENDPOINT =====
+  def compare_duplicate
+    @client_id = params[:client_id]
+    @client = Client.find(@client_id) if @client_id
+    
+    csv_data = JSON.parse(params[:csv_data])
+    csv_index = params[:csv_index].to_i
+    existing_employee_id = params[:existing_employee_id].to_i
+    
+    @csv_employee = csv_data[csv_index]
+    @existing_employee = Employee.find(existing_employee_id)
+    
+    respond_to do |format|
+      format.json {
+        render json: {
+          csv_employee: @csv_employee,
+          existing_employee: format_employee_for_comparison(@existing_employee),
+          comparison_html: render_to_string(
+            partial: 'duplicate_comparison_modal',
+            locals: {
+              csv_employee: @csv_employee,
+              existing_employee: @existing_employee,
+              csv_index: csv_index
+            }
+          )
+        }
+      }
+    end
+  end
+
   private
 
   def set_employee
@@ -178,7 +210,7 @@ class EmployeesController < ApplicationController
     )
   end
 
-  # ===== CSV IMPORT HELPER METHODS =====
+  # ===== ENHANCED CSV IMPORT HELPER METHODS =====
 
   def parse_csv_for_preview(file, client)
     require 'csv'
@@ -193,7 +225,7 @@ class EmployeesController < ApplicationController
         hours_worked: row[:hours]&.to_f || 40,
         department: row[:department]&.strip,
         phone: row[:phone]&.strip,
-        email: row[:email]&.strip,
+        email: row[:email]&.strip&.downcase, # Normalize email for matching
         hire_date: parse_date(row[:hire_date]) || Date.current,
         employment_type: parse_employment_type(row[:employment_type]) || 'W2',
         status: parse_status(row[:status]) || 'active'
@@ -209,35 +241,189 @@ class EmployeesController < ApplicationController
     preview_data
   end
 
-  def detect_duplicates(preview_data, existing_employees)
+  # ===== ENHANCED DUPLICATE DETECTION =====
+  def detect_enhanced_duplicates(preview_data, existing_employees)
     warnings = []
     
-    # Check for duplicates within the CSV
-    names_in_csv = preview_data.map { |emp| emp[:name]&.downcase }.compact
-    duplicate_names_in_csv = names_in_csv.select { |name| names_in_csv.count(name) > 1 }.uniq
+    # Check for duplicates within the CSV (enhanced)
+    warnings.concat(detect_csv_internal_duplicates(preview_data))
     
-    duplicate_names_in_csv.each do |name|
-      warnings << {
-        type: 'csv_duplicate',
-        message: "Multiple employees named '#{name.titleize}' found in CSV",
-        name: name
-      }
+    # Check for duplicates against existing database (enhanced)
+    warnings.concat(detect_database_duplicates(preview_data, existing_employees))
+    
+    warnings
+  end
+
+  def detect_csv_internal_duplicates(preview_data)
+    warnings = []
+    names_seen = {}
+    emails_seen = {}
+    
+    preview_data.each_with_index do |emp_data, index|
+      name = emp_data[:name]&.downcase&.strip
+      email = emp_data[:email]&.downcase&.strip
+      
+      # Name duplicate detection
+      if name.present?
+        if names_seen[name]
+          warnings << {
+            type: 'csv_duplicate',
+            category: 'name',
+            message: "Multiple employees named '#{name.titleize}' found in CSV",
+            csv_index: index,
+            duplicate_index: names_seen[name],
+            field: 'name',
+            value: name
+          }
+        else
+          names_seen[name] = index
+        end
+      end
+      
+      # Email duplicate detection
+      if email.present?
+        if emails_seen[email]
+          warnings << {
+            type: 'csv_duplicate',
+            category: 'email',
+            message: "Multiple employees with email '#{email}' found in CSV",
+            csv_index: index,
+            duplicate_index: emails_seen[email],
+            field: 'email',
+            value: email
+          }
+        else
+          emails_seen[email] = index
+        end
+      end
     end
     
-    # Check for duplicates against existing database
+    warnings
+  end
+
+  def detect_database_duplicates(preview_data, existing_employees)
+    warnings = []
+    
     preview_data.each_with_index do |emp_data, index|
-      name = emp_data[:name]&.downcase
-      if existing_employees.include?(name)
+      matches = find_potential_matches(emp_data, existing_employees)
+      
+      matches.each do |match|
         warnings << {
           type: 'database_duplicate',
-          message: "Employee '#{name.titleize}' already exists in database",
-          name: name,
-          index: index
+          category: match[:match_type],
+          message: match[:message],
+          csv_index: index,
+          existing_employee_id: match[:employee].id,
+          existing_employee: match[:employee],
+          confidence: match[:confidence],
+          field: match[:field],
+          csv_value: emp_data[match[:field].to_sym],
+          db_value: match[:db_value]
         }
       end
     end
     
     warnings
+  end
+
+  def find_potential_matches(csv_employee, existing_employees)
+    matches = []
+    csv_name = csv_employee[:name]&.downcase&.strip
+    csv_email = csv_employee[:email]&.downcase&.strip
+    
+    existing_employees.each do |existing|
+      existing_name = existing.name&.downcase&.strip
+      existing_email = existing.email&.downcase&.strip
+      
+      # Exact name match
+      if csv_name.present? && existing_name.present? && csv_name == existing_name
+        matches << {
+          employee: existing,
+          match_type: 'exact_name',
+          message: "Employee '#{csv_name.titleize}' already exists",
+          confidence: 100,
+          field: 'name',
+          db_value: existing_name
+        }
+      end
+      
+      # Fuzzy name match
+      if csv_name.present? && existing_name.present? && csv_name != existing_name
+        similarity = calculate_name_similarity(csv_name, existing_name)
+        if similarity >= 80 # 80% similarity threshold
+          matches << {
+            employee: existing,
+            match_type: 'fuzzy_name',
+            message: "Similar name found: '#{existing_name.titleize}' (#{similarity}% match)",
+            confidence: similarity,
+            field: 'name',
+            db_value: existing_name
+          }
+        end
+      end
+      
+      # Email match
+      if csv_email.present? && existing_email.present? && csv_email == existing_email
+        matches << {
+          employee: existing,
+          match_type: 'exact_email',
+          message: "Email '#{csv_email}' already exists for #{existing_name.titleize}",
+          confidence: 100,
+          field: 'email',
+          db_value: existing_email
+        }
+      end
+    end
+    
+    matches
+  end
+
+  def calculate_name_similarity(name1, name2)
+    # Simple fuzzy matching using Levenshtein distance
+    # Convert to percentage similarity
+    max_length = [name1.length, name2.length].max
+    return 100 if max_length == 0
+    
+    distance = levenshtein_distance(name1, name2)
+    similarity = ((max_length - distance).to_f / max_length) * 100
+    similarity.round
+  end
+
+  def levenshtein_distance(s1, s2)
+    # Simple Levenshtein distance calculation
+    s1, s2 = s1.downcase, s2.downcase
+    costs = Array(0..s2.length)
+    
+    (1..s1.length).each do |i|
+      costs[0], nw = i, costs[0]
+      (1..s2.length).each do |j|
+        costs[j], nw = [
+          costs[j] + 1,
+          costs[j-1] + 1,
+          nw + (s1[i-1] == s2[j-1] ? 0 : 1)
+        ].min, costs[j]
+      end
+    end
+    
+    costs[s2.length]
+  end
+
+  def format_employee_for_comparison(employee)
+    {
+      id: employee.id,
+      name: employee.name,
+      title: employee.title,
+      email: employee.email,
+      phone: employee.phone,
+      department: employee.department,
+      salary: employee.salary,
+      hours_worked: employee.hours_worked,
+      hire_date: employee.hire_date&.strftime('%Y-%m-%d'),
+      employment_type: employee.employment_type,
+      status: employee.status,
+      formatted_phone: employee.formatted_phone,
+      created_at: employee.created_at.strftime('%B %d, %Y')
+    }
   end
 
   def import_selected_employees(preview_data, selected_indices, client)
