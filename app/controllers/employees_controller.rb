@@ -110,18 +110,232 @@ class EmployeesController < ApplicationController
     end
 
     begin
-      # Parse CSV for preview without saving
-      @preview_data = parse_csv_for_preview(file, @client)
+      puts "=== DEBUGGING CSV IMPORT ==="
+      puts "File: #{file.original_filename}"
+      puts "File path: #{file.path}"
+      puts "File size: #{file.size}"
+      
+      # FIXED: Handle encoding issues properly
+      @preview_data = parse_csv_with_encoding_fix(file, @client)
+      puts "Preview data parsed: #{@preview_data.count} rows"
+      
       @existing_employees = @client.employees.includes(:client).to_a
+      puts "Existing employees: #{@existing_employees.count}"
       
-      # ENHANCED: Detect duplicates with fuzzy matching and email matching
-      @duplicate_warnings = detect_enhanced_duplicates(@preview_data, @existing_employees)
+      # Simplified duplicate detection
+      @duplicate_warnings = detect_simple_duplicates_only(@preview_data, @existing_employees)
+      puts "Duplicate warnings: #{@duplicate_warnings.count}"
       
+      puts "=== RENDERING PREVIEW ==="
       render :import_preview
+      
     rescue => e
+      puts "=== ERROR IN IMPORT PREVIEW ==="
+      puts "Error class: #{e.class}"
+      puts "Error message: #{e.message}"
+      puts "Error backtrace:"
+      e.backtrace[0..5].each { |line| puts "  #{line}" }
+      
       redirect_to import_form_employees_path(client_id: @client_id), 
                   alert: "Error reading CSV file: #{e.message}"
     end
+  end
+
+  # FIXED: New method that handles encoding properly
+  def parse_csv_with_encoding_fix(file, client)
+    require 'csv'
+    
+    preview_data = []
+    
+    # Try to detect and fix encoding issues
+    file_content = nil
+    
+    # Try UTF-8 first
+    begin
+      file_content = File.read(file.path, encoding: 'UTF-8')
+      puts "✅ File read as UTF-8 successfully"
+    rescue Encoding::InvalidByteSequenceError
+      puts "❌ UTF-8 failed, trying other encodings..."
+      
+      # Try common encodings
+      ['ISO-8859-1', 'Windows-1252', 'CP1252'].each do |encoding|
+        begin
+          file_content = File.read(file.path, encoding: "#{encoding}:UTF-8")
+          puts "✅ File read as #{encoding} and converted to UTF-8"
+          break
+        rescue => e
+          puts "❌ #{encoding} failed: #{e.message}"
+          next
+        end
+      end
+    end
+    
+    # If all encodings fail, try forcing UTF-8 with replacement
+    unless file_content
+      begin
+        file_content = File.read(file.path, encoding: 'UTF-8', invalid: :replace, undef: :replace, replace: '')
+        puts "✅ File read with UTF-8 forcing (invalid characters replaced)"
+      rescue => e
+        puts "❌ All encoding attempts failed: #{e.message}"
+        raise "Could not read file with any encoding: #{e.message}"
+      end
+    end
+    
+    # Preview first few lines for debugging
+    lines = file_content.lines[0..2]
+    puts "=== FILE CONTENT PREVIEW ==="
+    lines.each_with_index do |line, i|
+      puts "Line #{i+1}: #{line.strip[0..100]}#{'...' if line.length > 100}"
+    end
+    puts "=== END PREVIEW ==="
+    
+    # Parse CSV from the cleaned content
+    begin
+      csv_data = CSV.parse(file_content, headers: true, header_converters: :symbol)
+      puts "✅ CSV parsed successfully, #{csv_data.count} rows found"
+      
+      csv_data.each_with_index do |row, index|
+        puts "Processing row #{index + 1}: #{row.to_h.keys}" if index < 3 # Debug first 3 rows
+        
+        employee_data = {
+          name: safe_clean_string(row[:name]),
+          title: safe_clean_string(row[:title]),
+          salary: parse_salary_safe(row[:salary]),
+          hours_worked: parse_hours_safe(row[:hours_worked] || row[:hours]) || 40.0,
+          department: safe_clean_string(row[:department]),
+          phone: safe_clean_string(row[:phone]),
+          email: safe_clean_email(row[:email]),
+          hire_date: parse_date_safe(row[:hire_date]) || Date.current,
+          employment_type: parse_employment_type_safe(row[:employment_type]) || 'W2',
+          status: parse_status_safe(row[:status]) || 'active'
+        }
+        
+        # Add validation info for preview
+        employee_data[:valid] = validate_employee_data_simple(employee_data)
+        employee_data[:errors] = get_validation_errors_simple(employee_data)
+        
+        preview_data << employee_data
+      end
+      
+    rescue CSV::MalformedCSVError => e
+      puts "❌ CSV malformed error: #{e.message}"
+      raise "CSV file is malformed or corrupted: #{e.message}"
+    rescue => e
+      puts "❌ General CSV parsing error: #{e.class} - #{e.message}"
+      raise "Error parsing CSV: #{e.message}"
+    end
+    
+    puts "✅ Successfully parsed #{preview_data.count} employees"
+    preview_data
+  end
+
+  # Safe string cleaning methods
+  def safe_clean_string(value)
+    return nil if value.nil?
+    value.to_s.strip.presence
+  end
+
+  def safe_clean_email(value)
+    return nil if value.nil?
+    email = value.to_s.strip.downcase
+    email.present? ? email : nil
+  end
+
+  def parse_salary_safe(value)
+    return nil if value.blank?
+    begin
+      cleaned = value.to_s.gsub(/[\$,]/, '').strip
+      cleaned.match?(/^\d+\.?\d*$/) ? cleaned.to_f : nil
+    rescue
+      nil
+    end
+  end
+
+  def parse_hours_safe(value)
+    return nil if value.blank?
+    begin
+      value.to_s.to_f if value.to_s.match?(/^\d+\.?\d*$/)
+    rescue
+      nil
+    end
+  end
+
+  def parse_date_safe(value)
+    return nil if value.blank?
+    begin
+      Date.parse(value.to_s)
+    rescue ArgumentError, TypeError
+      nil
+    end
+  end
+
+  def parse_employment_type_safe(value)
+    return 'W2' if value.blank?
+    begin
+      value.to_s.upcase.include?('1099') ? '1099' : 'W2'
+    rescue
+      'W2'
+    end
+  end
+
+  def parse_status_safe(value)
+    return 'active' if value.blank?
+    begin
+      value.to_s.downcase == 'inactive' ? 'inactive' : 'active'
+    rescue
+      'active'
+    end
+  end
+
+  def validate_employee_data_simple(data)
+    data[:name].present? && data[:salary].present? && data[:salary].to_f > 0
+  end
+
+  def get_validation_errors_simple(data)
+    errors = []
+    errors << "Name is required" if data[:name].blank?
+    errors << "Salary is required" if data[:salary].blank?
+    errors << "Salary must be greater than 0" if data[:salary].present? && data[:salary].to_f <= 0
+    errors
+  end
+
+  # Keep the simple duplicate detection method from before
+  def detect_simple_duplicates_only(preview_data, existing_employees)
+    warnings = []
+    
+    # Simple name-based duplicate detection within CSV
+    names_seen = {}
+    preview_data.each_with_index do |emp_data, index|
+      name = emp_data[:name]&.downcase&.strip
+      if name.present? && names_seen[name]
+        warnings << {
+          type: 'csv_duplicate',
+          category: 'name',
+          message: "Duplicate name '#{name.titleize}' found in CSV",
+          csv_index: index
+        }
+      elsif name.present?
+        names_seen[name] = index
+      end
+    end
+    
+    # Simple database duplicate detection
+    existing_employees.each do |existing|
+      preview_data.each_with_index do |csv_emp, index|
+        if csv_emp[:name].present? && existing.name.present? &&
+           csv_emp[:name].downcase.strip == existing.name.downcase.strip
+          warnings << {
+            type: 'database_duplicate',
+            category: 'exact_name',
+            message: "Employee '#{csv_emp[:name]}' already exists",
+            csv_index: index,
+            existing_employee_id: existing.id
+          }
+        end
+      end
+    end
+    
+    warnings
   end
 
   def import_employees
