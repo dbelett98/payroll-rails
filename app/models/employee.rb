@@ -11,18 +11,18 @@ class Employee < ApplicationRecord
   # NOTE: Removed encrypts for now - will add in Step M when we set up Rails credentials
   # encrypts :ssn
   # encrypts :bank_routing_number
-  # encrypts :bank_account_number
+  # ===== UPDATED VALIDATIONS - IMPORT FRIENDLY =====
   
-  # ===== VALIDATIONS =====
-  
-  # Core required fields
+  # Core required fields - only name is absolutely required
   validates :name, presence: { message: "is required" }, length: { minimum: 2, message: "must be at least 2 characters" }
-  validates :hire_date, presence: { message: "is required - please select the employee's start date" }
-  validates :title, presence: { message: "is required" }
-  validates :salary, presence: { message: "is required" }, numericality: { greater_than: 0, message: "must be greater than $0" }
-  validates :hours_worked, presence: { message: "is required" }, numericality: { greater_than_or_equal_to: 0, message: "cannot be negative" }
   
-  # Employment details
+  # Optional but validated when present
+  validates :title, length: { minimum: 1, message: "cannot be blank if provided" }, allow_blank: true
+  validates :salary, numericality: { greater_than: 0, message: "must be greater than $0" }, allow_blank: true
+  validates :hours_worked, numericality: { greater_than_or_equal_to: 0, message: "cannot be negative" }, allow_blank: true
+  validates :hire_date, presence: { message: "is recommended for payroll processing" }, allow_blank: true
+  
+  # Employment details with defaults
   validates :employment_type, inclusion: { in: %w[W2 1099], message: "must be W2 or 1099" }
   validates :status, inclusion: { in: %w[active inactive], message: "must be active or inactive" }
   validates :pay_frequency, inclusion: { 
@@ -91,35 +91,77 @@ class Employee < ApplicationRecord
     message: "cannot be negative" 
   }, allow_blank: true
 
-  # ===== SCOPES =====
-  scope :active, -> { where(status: 'active') }
-  scope :inactive, -> { where(status: 'inactive') }
-  scope :w2_employees, -> { where(employment_type: 'W2') }
-  scope :contractors, -> { where(employment_type: '1099') }
-  scope :by_department, ->(dept) { where(department: dept) }
-  scope :by_pay_frequency, ->(freq) { where(pay_frequency: freq) }
-  scope :by_status, ->(status) { where(status: status) }
+  # ===== NEW: DATA COMPLETION METHODS =====
   
-  # ===== INSTANCE METHODS =====
+  # Required fields for payroll processing
+  PAYROLL_REQUIRED_FIELDS = %w[salary hours_worked hire_date].freeze
+  CONTACT_REQUIRED_FIELDS = %w[phone email].freeze
+  BANKING_REQUIRED_FIELDS = %w[bank_routing_number bank_account_number].freeze
+  TAX_REQUIRED_FIELDS = %w[ssn].freeze
   
-  # Enhanced payroll calculation method
-  def calculate_pay
-    return 0 if salary.blank? || hours_worked.blank?
-
-    if employment_type == '1099'
-      # 1099 contractors - simple hourly calculation
-      hourly_rate = calculate_hourly_rate
-      (hours_worked * hourly_rate).round(2)
+  # Check if employee has missing critical data
+  def has_missing_required_data?
+    missing_payroll_data? || missing_contact_data? || missing_tax_data?
+  end
+  
+  # Check specific data categories
+  def missing_payroll_data?
+    PAYROLL_REQUIRED_FIELDS.any? { |field| send(field).blank? }
+  end
+  
+  def missing_contact_data?
+    CONTACT_REQUIRED_FIELDS.all? { |field| send(field).blank? }
+  end
+  
+  def missing_banking_data?
+    BANKING_REQUIRED_FIELDS.any? { |field| send(field).blank? }
+  end
+  
+  def missing_tax_data?
+    TAX_REQUIRED_FIELDS.any? { |field| send(field).blank? }
+  end
+  
+  # Get list of missing required fields
+  def missing_required_fields
+    missing = []
+    missing += missing_payroll_fields
+    missing += missing_contact_fields if missing_contact_data?
+    missing += missing_tax_fields
+    missing
+  end
+  
+  def missing_payroll_fields
+    PAYROLL_REQUIRED_FIELDS.select { |field| send(field).blank? }
+  end
+  
+  def missing_contact_fields
+    return ['phone or email'] if missing_contact_data?
+    []
+  end
+  
+  def missing_tax_fields
+    TAX_REQUIRED_FIELDS.select { |field| send(field).blank? }
+  end
+  
+  # Data completion percentage
+  def data_completion_percentage
+    total_fields = PAYROLL_REQUIRED_FIELDS.count + 1 + TAX_REQUIRED_FIELDS.count # +1 for contact (either phone or email)
+    completed_fields = total_fields - missing_required_fields.count
+    ((completed_fields.to_f / total_fields) * 100).round
+  end
+  
+  # Warning message for missing data
+  def missing_data_warning
+    return nil unless has_missing_required_data?
+    
+    missing = missing_required_fields
+    case missing.count
+    when 1
+      "Missing: #{missing.first.humanize}"
+    when 2
+      "Missing: #{missing.first.humanize} and #{missing.last.humanize}"
     else
-      # W2 employees - calculate with overtime
-      regular_hours = [hours_worked, 40].min
-      overtime_hours = [hours_worked - 40, 0].max
-      hourly_rate = calculate_hourly_rate
-      
-      regular_pay = regular_hours * hourly_rate
-      overtime_pay = overtime_hours * (hourly_rate * 1.5)
-      
-      (regular_pay + overtime_pay).round(2)
+      "Missing: #{missing.count} required fields"
     end
   end
   
