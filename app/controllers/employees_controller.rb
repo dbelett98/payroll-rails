@@ -379,34 +379,37 @@ class EmployeesController < ApplicationController
   end
 
   # ===== NEW: DUPLICATE COMPARISON ENDPOINT =====
-  def compare_duplicate
-    @client_id = params[:client_id]
-    @client = Client.find(@client_id) if @client_id
-    
-    csv_data = JSON.parse(params[:csv_data])
-    csv_index = params[:csv_index].to_i
-    existing_employee_id = params[:existing_employee_id].to_i
-    
-    @csv_employee = csv_data[csv_index]
-    @existing_employee = Employee.find(existing_employee_id)
-    
-    respond_to do |format|
-      format.json {
-        render json: {
-          csv_employee: @csv_employee,
-          existing_employee: format_employee_for_comparison(@existing_employee),
-          comparison_html: render_to_string(
-            partial: 'duplicate_comparison_modal',
-            locals: {
-              csv_employee: @csv_employee,
-              existing_employee: @existing_employee,
-              csv_index: csv_index
-            }
-          )
-        }
+  # Replace the compare_duplicate method in app/controllers/employees_controller.rb
+
+def compare_duplicate
+  @client_id = params[:client_id]
+  @client = Client.find(@client_id) if @client_id
+  
+  csv_data = JSON.parse(params[:csv_data])
+  csv_index = params[:csv_index].to_i
+  existing_employee_id = params[:existing_employee_id].to_i
+  
+  @csv_employee = csv_data[csv_index]
+  @existing_employee = Employee.find(existing_employee_id)
+  
+  respond_to do |format|
+    format.json {
+      render json: {
+        csv_employee: @csv_employee,
+        existing_employee: format_employee_for_comparison(@existing_employee),
+        comparison_html: render_to_string(
+          partial: 'duplicate_comparison_modal',
+          locals: {
+            csv_employee: @csv_employee,
+            existing_employee: @existing_employee,
+            csv_index: csv_index
+          },
+          formats: [:html]  # <- FIXED: Explicitly specify HTML format
+        )
       }
-    end
+    }
   end
+end
 
   private
 
