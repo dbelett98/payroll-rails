@@ -16,7 +16,7 @@
       <header class="app-header">
         <div class="header-container">
           <div class="header-left">
-            <h1 class="app-title">PSB Payroll</h1>
+            <%= link_to "PSB Payroll", dashboard_path, class: "app-title" %>
           </div>
           <div class="header-right">
             <span class="user-welcome">Welcome, <%= current_user.email %></span>

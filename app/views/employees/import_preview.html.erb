@@ -1,110 +1,244 @@
-<!-- app/views/employees/import_form.html.erb -->
+<!-- app/views/employees/import_preview.html.erb -->
 
 <div class="dashboard-wrapper">
-  <div class="import-form-container">
+  <div class="import-preview-container">
     <!-- Header -->
     <div class="import-header">
       <h1 class="import-title">
-        <span class="import-icon">📊</span>
-        Import Employees - <%= @client.name %>
+        <span class="import-icon">📋</span>
+        Import Preview - <%= @client.name %>
       </h1>
-      <p class="import-subtitle">Upload a CSV file to import employees for this client</p>
+      <p class="import-subtitle">Review and select employees to import from your CSV file</p>
     </div>
 
-    <!-- Instructions -->
-    <div class="import-instructions">
-      <h3>📋 CSV Format Requirements</h3>
-      <div class="instruction-grid">
-        <div class="instruction-item">
-          <strong>Required Headers:</strong>
-          <ul>
-            <li>Name</li>
-            <li>Salary</li>
-          </ul>
+    <!-- Duplicate Warnings -->
+    <% if @duplicate_warnings.any? %>
+      <div class="duplicate-warnings">
+        <div class="warning-header">
+          <span class="warning-icon">⚠️</span>
+          <h3>Duplicate Detection</h3>
         </div>
-        <div class="instruction-item">
-          <strong>Optional Headers:</strong>
-          <ul>
-            <li>Title</li>
-            <li>Department</li>
-            <li>Hours</li>
-            <li>Phone</li>
-            <li>Email</li>
-            <li>Hire Date</li>
-            <li>Employment Type</li>
-            <li>Status</li>
-          </ul>
-        </div>
-      </div>
-      
-      <div class="format-notes">
-        <p><strong>Format Notes:</strong></p>
-        <ul>
-          <li>Salary: Can include $ and commas (e.g., $50,000 or 50000)</li>
-          <li>Hours: Defaults to 40 if not provided</li>
-          <li>Employment Type: W2 or 1099 (defaults to W2)</li>
-          <li>Status: Active or Inactive (defaults to Active)</li>
-          <li>Hire Date: Any common date format (MM/DD/YYYY, YYYY-MM-DD, etc.)</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Upload Form -->
-    <div class="upload-section">
-      <%= form_with url: import_preview_employees_path, method: :post, local: true, multipart: true, class: "upload-form" do |f| %>
-        <%= f.hidden_field :client_id, value: @client.id %>
-        
-        <div class="file-upload-area" id="file-upload-area">
-          <div class="upload-content">
-            <div class="upload-icon">📁</div>
-            <h3>Choose CSV File</h3>
-            <p>Click to browse or drag and drop your CSV file here</p>
-            <%= f.file_field :file, 
-                accept: ".csv", 
-                class: "file-input",
-                id: "csv-file-input",
-                required: true %>
-          </div>
-          
-          <div class="file-info" id="file-info" style="display: none;">
-            <div class="file-details">
-              <span class="file-name" id="file-name"></span>
-              <span class="file-size" id="file-size"></span>
+        <div class="warning-list">
+          <% @duplicate_warnings.each do |warning| %>
+            <div class="warning-item <%= warning[:type] %>">
+              <span class="warning-badge">
+                <%= warning[:type] == 'csv_duplicate' ? 'CSV' : 'DB' %>
+              </span>
+              <%= warning[:message] %>
             </div>
-            <button type="button" class="remove-file-btn" id="remove-file-btn">✕</button>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Import Form -->
+    <%= form_with url: import_employees_employees_path, method: :post, local: true, class: "import-form" do |f| %>
+      <%= f.hidden_field :client_id, value: @client.id %>
+      <%= f.hidden_field :csv_data, value: @preview_data.to_json %>
+
+      <!-- Enhanced Controls Bar -->
+      <div class="import-controls">
+        <!-- Row 1: Selection and Stats -->
+        <div class="control-row">
+          <div class="selection-group">
+            <button type="button" id="select-all-btn" class="btn btn-sm btn-secondary">
+              <span class="btn-icon">☑️</span> Select All
+            </button>
+            <button type="button" id="deselect-all-btn" class="btn btn-sm btn-secondary">
+              <span class="btn-icon">⬜</span> Deselect All
+            </button>
+            <button type="button" id="select-filtered-btn" class="btn btn-sm btn-secondary">
+              <span class="btn-icon">🎯</span> Select Filtered
+            </button>
+          </div>
+          
+          <div class="import-stats">
+            <span id="selected-count">0</span> of <span id="visible-count"><%= @preview_data.count %></span> employees selected
+            <span class="total-count">(<%= @preview_data.count %> total)</span>
           </div>
         </div>
-        
-        <div class="upload-actions">
-          <%= link_to dashboard_path(client_id: @client.id), class: "btn btn-secondary" do %>
-            <span class="btn-icon">⬅️</span> Back to Dashboard
-          <% end %>
+
+        <!-- Row 2: Search and Filters -->
+        <div class="filter-row">
+          <div class="search-group">
+            <input type="text" id="employee-search" placeholder="Search by name, title, or department..." class="search-input">
+            <button type="button" id="clear-search-btn" class="clear-search-btn" style="display: none;">✕</button>
+          </div>
           
-          <button type="submit" class="btn btn-primary" id="upload-submit" disabled>
-            <span class="btn-icon">🔍</span> Preview Import
+          <div class="filter-group">
+            <select id="employment-type-filter" class="filter-select">
+              <option value="">All Employment Types</option>
+              <option value="W2">W2 Employee</option>
+              <option value="1099">1099 Contractor</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <select id="status-filter" class="filter-select">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <select id="validation-filter" class="filter-select">
+              <option value="">All Records</option>
+              <option value="valid">Valid Only</option>
+              <option value="invalid">Errors Only</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <select id="duplicate-filter" class="filter-select">
+              <option value="">All Records</option>
+              <option value="duplicates">Duplicates Only</option>
+              <option value="no-duplicates">No Duplicates</option>
+            </select>
+          </div>
+          
+          <button type="button" id="clear-filters-btn" class="btn btn-sm btn-clear">
+            <span class="btn-icon">🗑️</span> Clear Filters
           </button>
         </div>
-      <% end %>
-    </div>
-
-    <!-- Sample CSV Template -->
-    <div class="template-section">
-      <h3>📄 Download Sample Template</h3>
-      <p>Need a starting point? Download our sample CSV template with the correct headers.</p>
-      
-      <div class="template-download">
-        <a href="#" class="btn btn-secondary" id="download-template">
-          <span class="btn-icon">⬇️</span> Download CSV Template
-        </a>
       </div>
-    </div>
+
+      <!-- Filter Summary -->
+      <div id="filter-summary" class="filter-summary" style="display: none;">
+        <div class="filter-tags" id="filter-tags"></div>
+        <div class="filter-results">
+          Showing <span id="filtered-count"><%= @preview_data.count %></span> of <%= @preview_data.count %> employees
+        </div>
+      </div>
+
+      <!-- Employee Preview Table -->
+      <div class="preview-table-container">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th class="select-col">
+                <input type="checkbox" id="header-checkbox" class="header-checkbox">
+              </th>
+              <th class="sortable" data-sort="name">
+                Name <span class="sort-arrow">⇅</span>
+              </th>
+              <th class="sortable" data-sort="title">
+                Title <span class="sort-arrow">⇅</span>
+              </th>
+              <th class="sortable" data-sort="department">
+                Department <span class="sort-arrow">⇅</span>
+              </th>
+              <th class="sortable" data-sort="salary">
+                Salary <span class="sort-arrow">⇅</span>
+              </th>
+              <th class="sortable" data-sort="employment_type">
+                Employment Type <span class="sort-arrow">⇅</span>
+              </th>
+              <th class="sortable" data-sort="status">
+                Status <span class="sort-arrow">⇅</span>
+              </th>
+              <th>Warnings</th>
+            </tr>
+          </thead>
+          <tbody id="employee-table-body">
+            <% @preview_data.each_with_index do |employee, index| %>
+              <tr class="employee-row <%= 'has-errors' unless employee[:valid] %>" 
+                  data-index="<%= index %>" 
+                  data-name="<%= employee[:name]&.downcase %>"
+                  data-title="<%= employee[:title]&.downcase %>"
+                  data-department="<%= employee[:department]&.downcase %>"
+                  data-employment-type="<%= employee[:employment_type]&.downcase %>"
+                  data-status="<%= employee[:status]&.downcase %>"
+                  data-valid="<%= employee[:valid] %>"
+                  data-salary="<%= employee[:salary] || 0 %>">
+                <td class="select-col">
+                  <%= check_box_tag "selected_employees[#{index}]", "1", employee[:valid], 
+                      class: "employee-checkbox", 
+                      id: "employee_#{index}",
+                      disabled: !employee[:valid] %>
+                </td>
+                <td class="employee-name">
+                  <div class="name-container">
+                    <%= employee[:name] %>
+                    <% unless employee[:valid] %>
+                      <span class="error-indicator" title="<%= employee[:errors].join(', ') %>">❌</span>
+                    <% end %>
+                  </div>
+                </td>
+                <td><%= employee[:title] %></td>
+                <td><%= employee[:department] %></td>
+                <td class="salary-cell">
+                  <% if employee[:salary] %>
+                    $<%= number_with_delimiter(employee[:salary].round(2)) %>
+                  <% else %>
+                    <span class="missing-data">-</span>
+                  <% end %>
+                </td>
+                <td>
+                  <span class="employment-badge <%= employee[:employment_type]&.downcase %>">
+                    <%= employee[:employment_type] %>
+                  </span>
+                </td>
+                <td>
+                  <span class="status-badge <%= employee[:status]&.downcase %>">
+                    <%= employee[:status]&.titleize %>
+                  </span>
+                </td>
+                <td class="warnings-cell">
+                  <% warnings_for_employee = @duplicate_warnings.select { |w| w[:name] == employee[:name]&.downcase } %>
+                  <% if warnings_for_employee.any? %>
+                    <div class="warning-indicators">
+                      <% warnings_for_employee.each do |warning| %>
+                        <span class="warning-badge-small <%= warning[:type] %>" 
+                              title="<%= warning[:message] %>"
+                              data-duplicate-type="<%= warning[:type] %>">
+                          <%= warning[:type] == 'csv_duplicate' ? 'CSV' : 'DB' %>
+                        </span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <% unless employee[:valid] %>
+                    <div class="error-messages">
+                      <% employee[:errors].each do |error| %>
+                        <div class="error-message"><%= error %></div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        
+        <!-- No Results Message -->
+        <div id="no-results" class="no-results" style="display: none;">
+          <div class="no-results-icon">🔍</div>
+          <h3>No employees match your filters</h3>
+          <p>Try adjusting your search criteria or clearing filters</p>
+          <button type="button" id="clear-filters-no-results" class="btn btn-secondary">
+            Clear All Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="import-actions">
+        <%= link_to import_form_employees_path(client_id: @client.id), class: "btn btn-secondary" do %>
+          <span class="btn-icon">⬅️</span> Back to Upload
+        <% end %>
+        
+        <button type="submit" class="btn btn-primary import-submit-btn" id="import-submit" disabled>
+          <span class="btn-icon">📥</span> Import Selected Employees
+        </button>
+      </div>
+    <% end %>
   </div>
 </div>
 
 <style>
-  /* Import Form Styles */
-  .import-form-container {
-    max-width: 900px;
+  /* Enhanced Import Preview Styles */
+  .import-preview-container {
+    max-width: 1400px;
     margin: 0 auto;
     padding: 2rem;
   }
@@ -136,348 +270,946 @@
     font-size: 1.1rem;
   }
 
-  /* Instructions */
-  .import-instructions {
-    background: #f0f9ff;
-    border: 1px solid #0ea5e9;
+  /* Duplicate Warnings */
+  .duplicate-warnings {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 2rem;
   }
 
-  .import-instructions h3 {
-    color: #0c4a6e;
+  .warning-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 1rem;
+  }
+
+  .warning-header h3 {
+    color: #92400e;
     font-size: 1.25rem;
-  }
-
-  .instruction-grid {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .instruction-item {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #bae6fd;
-  }
-
-  .instruction-item strong {
-    color: #1e40af;
-    display: block;
-    margin-bottom: 0.5rem;
-  }
-
-  .instruction-item ul {
+    font-weight: 600;
     margin: 0;
-    padding-left: 1.25rem;
   }
 
-  .instruction-item li {
-    margin-bottom: 0.25rem;
-    color: #374151;
-  }
-
-  .format-notes {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #bae6fd;
-  }
-
-  .format-notes strong {
-    color: #1e40af;
-  }
-
-  .format-notes ul {
-    margin: 0.5rem 0 0 1.25rem;
-  }
-
-  .format-notes li {
-    margin-bottom: 0.25rem;
-    color: #374151;
-    font-size: 0.9rem;
-  }
-
-  /* Upload Section */
-  .upload-section {
-    background: white;
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    margin-bottom: 2rem;
-  }
-
-  .file-upload-area {
-    border: 3px dashed #d1d5db;
-    border-radius: 12px;
-    padding: 3rem 2rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    position: relative;
-    background: #fafafa;
-    margin-bottom: 1.5rem;
-  }
-
-  .file-upload-area:hover {
-    border-color: #667eea;
-    background: #f8fafc;
-  }
-
-  .file-upload-area.dragover {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  }
-
-  .upload-content {
-    pointer-events: none;
-  }
-
-  .upload-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  .upload-content h3 {
-    color: #374151;
-    margin-bottom: 0.5rem;
+  .warning-icon {
     font-size: 1.5rem;
   }
 
-  .upload-content p {
-    color: #6b7280;
-    font-size: 1rem;
+  .warning-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
-  .file-input {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
+  .warning-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid;
   }
 
-  .file-info {
+  .warning-item.csv_duplicate {
+    border-left-color: #f59e0b;
+  }
+
+  .warning-item.database_duplicate {
+    border-left-color: #ef4444;
+  }
+
+  .warning-badge {
+    background: #92400e;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Enhanced Import Controls */
+  .import-controls {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e2e8f0;
+  }
+
+  .control-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .selection-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .search-group {
+    position: relative;
+    flex: 2;
+    min-width: 300px;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    transition: border-color 0.3s ease;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .clear-search-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+
+  .clear-search-btn:hover {
+    background: #dc2626;
+  }
+
+  .filter-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+
+  .filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  .import-stats {
+    font-weight: 600;
+    color: #374151;
+    padding: 0.75rem 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    white-space: nowrap;
+  }
+
+  .total-count {
+    color: #6b7280;
+    font-weight: normal;
+  }
+
+  /* Filter Summary */
+  .filter-summary {
     background: #f0f9ff;
     border: 1px solid #0ea5e9;
     border-radius: 8px;
     padding: 1rem;
-    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
-  .file-details {
+  .filter-tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-tag {
+    background: #0ea5e9;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .filter-tag-remove {
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .filter-tag-remove:hover {
+    color: #fecaca;
+  }
+
+  .filter-results {
+    color: #0c4a6e;
+    font-weight: 600;
+  }
+
+  /* Enhanced Table */
+  .preview-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  .preview-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .preview-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .preview-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+  }
+
+  .sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .sortable:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .sort-arrow {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    opacity: 0.6;
+  }
+
+  .sortable.sort-asc .sort-arrow::after {
+    content: ' ▲';
+    color: white;
+    opacity: 1;
+  }
+
+  .sortable.sort-desc .sort-arrow::after {
+    content: ' ▼';
+    color: white;
+    opacity: 1;
+  }
+
+  .preview-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: top;
+  }
+
+  .select-col {
+    width: 50px;
+    text-align: center;
+  }
+
+  .employee-row:hover {
+    background: #f9fafb;
+  }
+
+  .employee-row.has-errors {
+    background: #fef2f2;
+  }
+
+  .employee-row.hidden {
+    display: none;
+  }
+
+  /* No Results */
+  .no-results {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+  }
+
+  .no-results-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .no-results h3 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  /* Employee Data Styling */
+  .name-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .error-indicator {
+    font-size: 0.875rem;
+  }
+
+  .salary-cell {
+    font-weight: 600;
+    color: #059669;
+  }
+
+  .missing-data {
+    color: #9ca3af;
+    font-style: italic;
+  }
+
+  .employment-badge,
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .employment-badge.w2 {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .employment-badge.\31 099 {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* Warning Indicators */
+  .warnings-cell {
+    min-width: 120px;
+  }
+
+  .warning-indicators {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .warning-badge-small {
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .warning-badge-small.csv_duplicate {
+    background: #fbbf24;
+    color: white;
+  }
+
+  .warning-badge-small.database_duplicate {
+    background: #ef4444;
+    color: white;
+  }
+
+  .error-messages {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
   }
 
-  .file-name {
-    font-weight: 600;
-    color: #1e40af;
+  .error-message {
+    font-size: 0.8rem;
+    color: #dc2626;
+    background: #fef2f2;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
   }
 
-  .file-size {
-    color: #6b7280;
-    font-size: 0.875rem;
-  }
-
-  .remove-file-btn {
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.3s ease;
-  }
-
-  .remove-file-btn:hover {
-    background: #dc2626;
-  }
-
-  /* Upload Actions */
-  .upload-actions {
+  /* Action Buttons */
+  .import-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 12px;
   }
 
-  #upload-submit:disabled {
+  .import-submit-btn:disabled {
     background: #9ca3af;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
   }
 
-  #upload-submit:disabled:hover {
+  .import-submit-btn:disabled:hover {
     background: #9ca3af;
     transform: none;
     box-shadow: none;
   }
 
-  /* Template Section */
-  .template-section {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1.5rem;
-    text-align: center;
+  /* Button Styles */
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    font-size: 1rem;
   }
 
-  .template-section h3 {
-    color: #374151;
-    margin-bottom: 0.5rem;
+  .btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
   }
 
-  .template-section p {
-    color: #6b7280;
-    margin-bottom: 1rem;
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
   }
 
-  .template-download {
-    display: flex;
-    justify-content: center;
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b46c1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-secondary {
+    background: #f8fafc;
+    color: #4b5563;
+    border: 2px solid #e2e8f0;
+  }
+
+  .btn-secondary:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #475569;
+    text-decoration: none;
+  }
+
+  .btn-clear {
+    background: #fef3c7;
+    color: #92400e;
+    border: 2px solid #fbbf24;
+  }
+
+  .btn-clear:hover {
+    background: #fef08a;
+    border-color: #f59e0b;
+    color: #78350f;
+  }
+
+  .btn-icon {
+    font-size: 1.2rem;
+    font-weight: bold;
   }
 
   /* Responsive Design */
   @media (max-width: 768px) {
-    .import-form-container {
-      padding: 1rem;
+    .control-row,
+    .filter-row {
+      flex-direction: column;
+      align-items: stretch;
     }
 
-    .instruction-grid {
-      grid-template-columns: 1fr;
+    .search-group,
+    .filter-group {
+      min-width: auto;
     }
 
-    .file-upload-area {
-      padding: 2rem 1rem;
+    .preview-table-container {
+      overflow-x: auto;
     }
 
-    .upload-actions {
+    .import-actions {
       flex-direction: column;
       gap: 1rem;
     }
 
-    .upload-actions .btn {
+    .import-actions .btn {
       width: 100%;
       text-align: center;
+      justify-content: center;
+    }
+
+    .filter-summary {
+      flex-direction: column;
+      align-items: stretch;
     }
   }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 Import Form Initialized');
+  console.log('🚀 Enhanced Import Preview System Initialized');
+  
+  // State variables
+  let currentSort = { column: null, direction: null };
+  let activeFilters = {};
   
   // Elements
-  const fileInput = document.getElementById('csv-file-input');
-  const uploadArea = document.getElementById('file-upload-area');
-  const fileInfo = document.getElementById('file-info');
-  const fileName = document.getElementById('file-name');
-  const fileSize = document.getElementById('file-size');
-  const removeFileBtn = document.getElementById('remove-file-btn');
-  const uploadSubmit = document.getElementById('upload-submit');
-  const downloadTemplate = document.getElementById('download-template');
+  const headerCheckbox = document.getElementById('header-checkbox');
+  const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
+  const selectAllBtn = document.getElementById('select-all-btn');
+  const deselectAllBtn = document.getElementById('deselect-all-btn');
+  const selectFilteredBtn = document.getElementById('select-filtered-btn');
+  const searchInput = document.getElementById('employee-search');
+  const clearSearchBtn = document.getElementById('clear-search-btn');
+  const selectedCountSpan = document.getElementById('selected-count');
+  const visibleCountSpan = document.getElementById('visible-count');
+  const filteredCountSpan = document.getElementById('filtered-count');
+  const importSubmitBtn = document.getElementById('import-submit');
+  const employeeRows = document.querySelectorAll('.employee-row');
+  const tableBody = document.getElementById('employee-table-body');
+  const noResults = document.getElementById('no-results');
+  const filterSummary = document.getElementById('filter-summary');
+  const filterTags = document.getElementById('filter-tags');
   
-  // File selection handling
-  fileInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      displayFileInfo(file);
-    }
+  // Filter elements
+  const employmentTypeFilter = document.getElementById('employment-type-filter');
+  const statusFilter = document.getElementById('status-filter');
+  const validationFilter = document.getElementById('validation-filter');
+  const duplicateFilter = document.getElementById('duplicate-filter');
+  const clearFiltersBtn = document.getElementById('clear-filters-btn');
+  const clearFiltersNoResults = document.getElementById('clear-filters-no-results');
+  
+  // Sortable headers
+  const sortableHeaders = document.querySelectorAll('.sortable');
+  
+  // Initialize
+  updateCounts();
+  
+  // Selection handlers
+  headerCheckbox.addEventListener('change', function() {
+    const isChecked = this.checked;
+    getVisibleCheckboxes().forEach(checkbox => {
+      checkbox.checked = isChecked;
+    });
+    updateCounts();
   });
   
-  // Drag and drop functionality
-  uploadArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.classList.add('dragover');
+  employeeCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateCounts);
   });
   
-  uploadArea.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    this.classList.remove('dragover');
+  selectAllBtn.addEventListener('click', function() {
+    getVisibleCheckboxes().forEach(checkbox => {
+      checkbox.checked = true;
+    });
+    updateCounts();
   });
   
-  uploadArea.addEventListener('drop', function(e) {
-    e.preventDefault();
-    this.classList.remove('dragover');
+  deselectAllBtn.addEventListener('click', function() {
+    employeeCheckboxes.forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    updateCounts();
+  });
+  
+  selectFilteredBtn.addEventListener('click', function() {
+    getVisibleCheckboxes().forEach(checkbox => {
+      checkbox.checked = true;
+    });
+    updateCounts();
+  });
+  
+  // Search functionality
+  searchInput.addEventListener('input', function() {
+    const searchTerm = this.value.trim();
+    activeFilters.search = searchTerm;
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
-        fileInput.files = files;
-        displayFileInfo(file);
+    if (searchTerm) {
+      clearSearchBtn.style.display = 'block';
+    } else {
+      clearSearchBtn.style.display = 'none';
+      delete activeFilters.search;
+    }
+    
+    applyFilters();
+  });
+  
+  clearSearchBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    this.style.display = 'none';
+    delete activeFilters.search;
+    applyFilters();
+  });
+  
+  // Filter handlers
+  employmentTypeFilter.addEventListener('change', function() {
+    if (this.value) {
+      activeFilters.employmentType = this.value;
+    } else {
+      delete activeFilters.employmentType;
+    }
+    applyFilters();
+  });
+  
+  statusFilter.addEventListener('change', function() {
+    if (this.value) {
+      activeFilters.status = this.value;
+    } else {
+      delete activeFilters.status;
+    }
+    applyFilters();
+  });
+  
+  validationFilter.addEventListener('change', function() {
+    if (this.value) {
+      activeFilters.validation = this.value;
+    } else {
+      delete activeFilters.validation;
+    }
+    applyFilters();
+  });
+  
+  duplicateFilter.addEventListener('change', function() {
+    if (this.value) {
+      activeFilters.duplicate = this.value;
+    } else {
+      delete activeFilters.duplicate;
+    }
+    applyFilters();
+  });
+  
+  // Clear filters
+  clearFiltersBtn.addEventListener('click', clearAllFilters);
+  clearFiltersNoResults.addEventListener('click', clearAllFilters);
+  
+  // Sorting
+  sortableHeaders.forEach(header => {
+    header.addEventListener('click', function() {
+      const column = this.dataset.sort;
+      
+      if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
       } else {
-        alert('Please drop a CSV file.');
+        currentSort.column = column;
+        currentSort.direction = 'asc';
       }
+      
+      updateSortHeaders();
+      sortTable();
+    });
+  });
+  
+  // Core functions
+  function applyFilters() {
+    let visibleCount = 0;
+    
+    employeeRows.forEach(row => {
+      let isVisible = true;
+      
+      // Search filter
+      if (activeFilters.search) {
+        const searchTerm = activeFilters.search.toLowerCase();
+        const name = row.dataset.name || '';
+        const title = row.dataset.title || '';
+        const department = row.dataset.department || '';
+        
+        if (!name.includes(searchTerm) && 
+            !title.includes(searchTerm) && 
+            !department.includes(searchTerm)) {
+          isVisible = false;
+        }
+      }
+      
+      // Employment type filter
+      if (activeFilters.employmentType) {
+        if (row.dataset.employmentType !== activeFilters.employmentType.toLowerCase()) {
+          isVisible = false;
+        }
+      }
+      
+      // Status filter
+      if (activeFilters.status) {
+        if (row.dataset.status !== activeFilters.status.toLowerCase()) {
+          isVisible = false;
+        }
+      }
+      
+      // Validation filter
+      if (activeFilters.validation) {
+        const isValid = row.dataset.valid === 'true';
+        if (activeFilters.validation === 'valid' && !isValid) {
+          isVisible = false;
+        } else if (activeFilters.validation === 'invalid' && isValid) {
+          isVisible = false;
+        }
+      }
+      
+      // Duplicate filter
+      if (activeFilters.duplicate) {
+        const hasDuplicates = row.querySelector('[data-duplicate-type]') !== null;
+        if (activeFilters.duplicate === 'duplicates' && !hasDuplicates) {
+          isVisible = false;
+        } else if (activeFilters.duplicate === 'no-duplicates' && hasDuplicates) {
+          isVisible = false;
+        }
+      }
+      
+      if (isVisible) {
+        row.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        row.classList.add('hidden');
+      }
+    });
+    
+    updateFilterSummary();
+    updateCounts();
+    
+    // Show/hide no results
+    if (visibleCount === 0) {
+      noResults.style.display = 'block';
+    } else {
+      noResults.style.display = 'none';
     }
-  });
-  
-  // Display file information
-  function displayFileInfo(file) {
-    fileName.textContent = file.name;
-    fileSize.textContent = formatFileSize(file.size);
-    fileInfo.style.display = 'flex';
-    uploadSubmit.disabled = false;
-    uploadSubmit.innerHTML = '<span class="btn-icon">🔍</span> Preview Import';
   }
   
-  // Remove file
-  removeFileBtn.addEventListener('click', function() {
-    fileInput.value = '';
-    fileInfo.style.display = 'none';
-    uploadSubmit.disabled = true;
-    uploadSubmit.innerHTML = '<span class="btn-icon">🔍</span> Preview Import';
-  });
-  
-  // Format file size
-  function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  function updateFilterSummary() {
+    const filterCount = Object.keys(activeFilters).length;
+    
+    if (filterCount === 0) {
+      filterSummary.style.display = 'none';
+      return;
+    }
+    
+    filterSummary.style.display = 'flex';
+    filterTags.innerHTML = '';
+    
+    // Create filter tags
+    Object.entries(activeFilters).forEach(([key, value]) => {
+      const tag = document.createElement('div');
+      tag.className = 'filter-tag';
+      
+      let displayText = '';
+      switch (key) {
+        case 'search':
+          displayText = `Search: "${value}"`;
+          break;
+        case 'employmentType':
+          displayText = `Type: ${value}`;
+          break;
+        case 'status':
+          displayText = `Status: ${value}`;
+          break;
+        case 'validation':
+          displayText = `Validation: ${value}`;
+          break;
+        case 'duplicate':
+          displayText = `Duplicates: ${value.replace('-', ' ')}`;
+          break;
+      }
+      
+      tag.innerHTML = `
+        ${displayText}
+        <span class="filter-tag-remove" data-filter="${key}">×</span>
+      `;
+      
+      filterTags.appendChild(tag);
+    });
+    
+    // Add click handlers for removing individual filters
+    filterTags.querySelectorAll('.filter-tag-remove').forEach(remove => {
+      remove.addEventListener('click', function() {
+        const filterKey = this.dataset.filter;
+        delete activeFilters[filterKey];
+        
+        // Reset corresponding UI element
+        switch (filterKey) {
+          case 'search':
+            searchInput.value = '';
+            clearSearchBtn.style.display = 'none';
+            break;
+          case 'employmentType':
+            employmentTypeFilter.value = '';
+            break;
+          case 'status':
+            statusFilter.value = '';
+            break;
+          case 'validation':
+            validationFilter.value = '';
+            break;
+          case 'duplicate':
+            duplicateFilter.value = '';
+            break;
+        }
+        
+        applyFilters();
+      });
+    });
+    
+    // Update filtered count
+    const visibleRows = document.querySelectorAll('.employee-row:not(.hidden)');
+    filteredCountSpan.textContent = visibleRows.length;
   }
   
-  // Download template
-  downloadTemplate.addEventListener('click', function(e) {
-    e.preventDefault();
+  function clearAllFilters() {
+    activeFilters = {};
     
-    // Create sample CSV content
-    const csvContent = [
-      'Name,Title,Department,Salary,Hours,Phone,Email,Hire Date,Employment Type,Status',
-      'John Doe,Software Engineer,Engineering,75000,40,(555) 123-4567,john.doe@company.com,2024-01-15,W2,Active',
-      'Jane Smith,Project Manager,Operations,65000,40,(555) 987-6543,jane.smith@company.com,2024-02-01,W2,Active',
-      'Bob Johnson,Contractor,Consulting,45,40,(555) 456-7890,bob.johnson@consultant.com,2024-03-01,1099,Active'
-    ].join('\n');
+    // Reset all UI elements
+    searchInput.value = '';
+    clearSearchBtn.style.display = 'none';
+    employmentTypeFilter.value = '';
+    statusFilter.value = '';
+    validationFilter.value = '';
+    duplicateFilter.value = '';
     
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'employee_import_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    console.log('📄 CSV template downloaded');
-  });
+    applyFilters();
+  }
   
-  console.log('✅ Import Form Ready');
+  function getVisibleCheckboxes() {
+    return document.querySelectorAll('.employee-row:not(.hidden) .employee-checkbox:not(:disabled)');
+  }
+  
+  function updateCounts() {
+    const visibleCheckboxes = getVisibleCheckboxes();
+    const selectedCheckboxes = document.querySelectorAll('.employee-checkbox:checked');
+    const visibleRows = document.querySelectorAll('.employee-row:not(.hidden)');
+    
+    selectedCountSpan.textContent = selectedCheckboxes.length;
+    visibleCountSpan.textContent = visibleRows.length;
+    
+    // Update header checkbox state
+    if (selectedCheckboxes.length === 0) {
+      headerCheckbox.indeterminate = false;
+      headerCheckbox.checked = false;
+    } else if (selectedCheckboxes.length === visibleCheckboxes.length) {
+      headerCheckbox.indeterminate = false;
+      headerCheckbox.checked = true;
+    } else {
+      headerCheckbox.indeterminate = true;
+    }
+    
+    // Update submit button
+    if (selectedCheckboxes.length > 0) {
+      importSubmitBtn.disabled = false;
+      importSubmitBtn.innerHTML = `<span class="btn-icon">📥</span> Import ${selectedCheckboxes.length} Selected Employee${selectedCheckboxes.length > 1 ? 's' : ''}`;
+    } else {
+      importSubmitBtn.disabled = true;
+      importSubmitBtn.innerHTML = '<span class="btn-icon">📥</span> Import Selected Employees';
+    }
+  }
+  
+  function updateSortHeaders() {
+    sortableHeaders.forEach(header => {
+      header.classList.remove('sort-asc', 'sort-desc');
+      if (header.dataset.sort === currentSort.column) {
+        header.classList.add(`sort-${currentSort.direction}`);
+      }
+    });
+  }
+  
+  function sortTable() {
+    const rowsArray = Array.from(employeeRows);
+    
+    rowsArray.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (currentSort.column) {
+        case 'name':
+          aVal = a.dataset.name || '';
+          bVal = b.dataset.name || '';
+          break;
+        case 'title':
+          aVal = a.dataset.title || '';
+          bVal = b.dataset.title || '';
+          break;
+        case 'department':
+          aVal = a.dataset.department || '';
+          bVal = b.dataset.department || '';
+          break;
+        case 'salary':
+          aVal = parseFloat(a.dataset.salary || 0);
+          bVal = parseFloat(b.dataset.salary || 0);
+          break;
+        case 'employment_type':
+          aVal = a.dataset.employmentType || '';
+          bVal = b.dataset.employmentType || '';
+          break;
+        case 'status':
+          aVal = a.dataset.status || '';
+          bVal = b.dataset.status || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (currentSort.column === 'salary') {
+        return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      } else {
+        if (currentSort.direction === 'asc') {
+          return aVal.localeCompare(bVal);
+        } else {
+          return bVal.localeCompare(aVal);
+        }
+      }
+    });
+    
+    // Reorder DOM elements
+    rowsArray.forEach(row => {
+      tableBody.appendChild(row);
+    });
+  }
+  
+  console.log('✅ Enhanced Import Preview System Ready');
 });
 </script>

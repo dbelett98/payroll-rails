@@ -38,6 +38,12 @@ body {
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.5px;
+  text-decoration: none !important;
+}
+
+.app-title:hover {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none !important; 
 }
 
 .header-right {

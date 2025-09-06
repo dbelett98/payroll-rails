@@ -1,163 +1,381 @@
 <!-- app/views/employees/import_form.html.erb -->
-<div class="import-wrapper">
-  <!-- Header -->
-  <div class="import-header">
-    <h1>Import Employees for <%= @client.name %></h1>
-    <p>Upload a CSV file to bulk import employee data</p>
-  </div>
 
-  <!-- Import Form -->
-  <div class="import-form-card">
-    <%= form_with url: import_employees_employees_path, method: :post, multipart: true, local: true, class: "import-form" do |form| %>
-      <%= form.hidden_field :client_id, value: @client.id %>
-      
-      <div class="form-group">
-        <%= form.label :file, "Select CSV File", class: "form-label" %>
-        <%= form.file_field :file, accept: ".csv", required: true, class: "file-input" %>
-        <p class="file-hint">Please select a CSV file with employee data</p>
-      </div>
-      
-      <div class="form-actions">
-        <%= link_to 'Cancel', dashboard_path(client_id: @client.id), class: 'btn btn-secondary' %>
-        <%= form.submit 'Import Employees', class: 'btn btn-primary' %>
-      </div>
-    <% end %>
-  </div>
-
-  <!-- CSV Format Guide -->
-  <div class="format-guide">
-    <h3>CSV Format Requirements</h3>
-    <p>Your CSV file should have these columns (Name, Title, and Salary are required):</p>
-    
-    <div class="sample-csv">
-      <table class="sample-table">
-        <thead>
-          <tr>
-            <th>Name*</th>
-            <th>Title*</th>
-            <th>Salary*</th>
-            <th>Department</th>
-            <th>Phone</th>
-            <th>Email</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>John Doe</td>
-            <td>Developer</td>
-            <td>75000</td>
-            <td>Engineering</td>
-            <td>(555) 123-4567</td>
-            <td>john@example.com</td>
-          </tr>
-        </tbody>
-      </table>
+<div class="dashboard-wrapper">
+  <div class="import-form-container">
+    <!-- Header -->
+    <div class="import-header">
+      <h1 class="import-title">
+        <span class="import-icon">📊</span>
+        Import Employees - <%= @client.name %>
+      </h1>
+      <p class="import-subtitle">Upload a CSV file to import employees for this client</p>
     </div>
-    
-    <p><strong>*Required fields</strong></p>
+
+    <!-- Upload Form - SIMPLE & RELIABLE -->
+    <div class="upload-section">
+      <%= form_with url: import_preview_employees_path, method: :post, local: true, multipart: true, class: "upload-form" do |f| %>
+        <%= f.hidden_field :client_id, value: @client.id %>
+        
+        <!-- Upload Area with Drag/Drop -->
+        <div class="file-upload-area" id="file-upload-area">
+          <div class="upload-content" id="upload-content">
+            <div class="upload-icon">📁</div>
+            <h3>Choose CSV File</h3>
+            <p>Click the button below or drag and drop your CSV file here</p>
+            
+            <!-- Clear Browse Files Button -->
+            <button type="button" id="browse-btn" class="browse-btn">
+              📂 Browse Files
+            </button>
+          </div>
+          
+          <!-- Hidden File Input -->
+          <%= f.file_field :file, 
+              accept: ".csv", 
+              id: "csv-file-input",
+              style: "display: none;",
+              required: true %>
+          
+          <!-- File Info Display -->
+          <div class="file-info" id="file-info" style="display: none;">
+            <div class="file-details">
+              <span class="file-name" id="file-name"></span>
+              <span class="file-size" id="file-size"></span>
+            </div>
+            <button type="button" class="remove-file-btn" id="remove-file-btn">✕</button>
+          </div>
+        </div>
+        
+        <div class="upload-actions">
+          <%= link_to dashboard_path(client_id: @client.id), class: "btn btn-secondary" do %>
+            <span class="btn-icon">⬅️</span> Back to Dashboard
+          <% end %>
+          
+          <button type="submit" class="btn btn-primary" id="upload-submit" disabled>
+            <span class="btn-icon">🔍</span> Preview Import
+          </button>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Instructions -->
+    <div class="import-instructions">
+      <h3>📋 CSV Format Requirements</h3>
+      <div class="instruction-grid">
+        <div class="instruction-item">
+          <strong>Required Headers:</strong>
+          <ul>
+            <li>Name</li>
+            <li>Salary</li>
+          </ul>
+        </div>
+        <div class="instruction-item">
+          <strong>Optional Headers:</strong>
+          <ul>
+            <li>Title</li>
+            <li>Department</li>
+            <li>Hours</li>
+            <li>Phone</li>
+            <li>Email</li>
+            <li>Hire Date</li>
+            <li>Employment Type</li>
+            <li>Status</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="format-notes">
+        <p><strong>Format Notes:</strong></p>
+        <ul>
+          <li>Salary: Can include $ and commas (e.g., $50,000 or 50000)</li>
+          <li>Hours: Defaults to 40 if not provided</li>
+          <li>Employment Type: W2 or 1099 (defaults to W2)</li>
+          <li>Status: Active or Inactive (defaults to Active)</li>
+          <li>Hire Date: Any common date format (MM/DD/YYYY, YYYY-MM-DD, etc.)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Sample CSV Template -->
+    <div class="template-section">
+      <h3>📄 Download Sample Template</h3>
+      <p>Need a starting point? Download our sample CSV template with the correct headers.</p>
+      
+      <div class="template-download">
+        <a href="#" class="btn btn-secondary" id="download-template">
+          <span class="btn-icon">⬇️</span> Download CSV Template
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 
 <style>
-  .import-wrapper {
-    max-width: 800px;
-    margin: 2rem auto;
+  /* Import Form Styles */
+  .import-form-container {
+    max-width: 900px;
+    margin: 0 auto;
     padding: 2rem;
   }
-  
+
   .import-header {
     text-align: center;
     margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #e5e7eb;
   }
-  
-  .import-header h1 {
+
+  .import-title {
     font-size: 2rem;
-    color: #2d3748;
+    font-weight: 600;
+    color: #1f2937;
     margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
   }
-  
-  .import-header p {
-    color: #718096;
+
+  .import-icon {
+    font-size: 2rem;
+  }
+
+  .import-subtitle {
+    color: #6b7280;
     font-size: 1.1rem;
   }
-  
-  .import-form-card {
+
+  /* Upload Section */
+  .upload-section {
     background: white;
     border-radius: 12px;
     padding: 2rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     margin-bottom: 2rem;
   }
-  
-  .form-group {
+
+  .file-upload-area {
+    border: 3px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: #fafafa;
     margin-bottom: 1.5rem;
+    position: relative;
   }
-  
-  .form-label {
-    display: block;
+
+  .file-upload-area.dragover {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  }
+
+  .upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .upload-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .upload-content h3 {
+    color: #374151;
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .upload-content p {
+    color: #6b7280;
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  /* Browse Button - Clear and Prominent */
+  .browse-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .browse-btn:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b46c1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+
+  .browse-btn:active {
+    transform: translateY(0);
+  }
+
+  /* File Info Display */
+  .file-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f0f9ff;
+    border: 2px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .file-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .file-name {
+    font-weight: 600;
+    color: #1e40af;
+    font-size: 1rem;
+  }
+
+  .file-size {
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+
+  .remove-file-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+    font-size: 1.2rem;
+  }
+
+  .remove-file-btn:hover {
+    background: #dc2626;
+  }
+
+  /* Upload Actions */
+  .upload-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #upload-submit:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  #upload-submit:disabled:hover {
+    background: #9ca3af;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Instructions */
+  .import-instructions {
+    background: #f0f9ff;
+    border: 1px solid #0ea5e9;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .import-instructions h3 {
+    color: #0c4a6e;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+  }
+
+  .instruction-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .instruction-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+  }
+
+  .instruction-item strong {
+    color: #1e40af;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .instruction-item ul {
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+
+  .instruction-item li {
+    margin-bottom: 0.25rem;
+    color: #374151;
+  }
+
+  .format-notes {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #bae6fd;
+  }
+
+  .format-notes strong {
+    color: #1e40af;
+  }
+
+  .format-notes ul {
+    margin: 0.5rem 0 0 1.25rem;
+  }
+
+  .format-notes li {
+    margin-bottom: 0.25rem;
+    color: #374151;
+    font-size: 0.9rem;
+  }
+
+  /* Template Section */
+  .template-section {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .template-section h3 {
     color: #374151;
     margin-bottom: 0.5rem;
   }
-  
-  .file-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 1rem;
-  }
-  
-  .file-hint {
+
+  .template-section p {
     color: #6b7280;
-    font-size: 0.9rem;
-    margin-top: 0.5rem;
-  }
-  
-  .form-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-  }
-  
-  .format-guide {
-    background: #f0f9ff;
-    border-radius: 12px;
-    padding: 2rem;
-    border: 1px solid #bae6fd;
-  }
-  
-  .format-guide h3 {
-    color: #0369a1;
     margin-bottom: 1rem;
   }
-  
-  .sample-csv {
-    margin: 1rem 0;
+
+  .template-download {
+    display: flex;
+    justify-content: center;
   }
-  
-  .sample-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  .sample-table th,
-  .sample-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  
-  .sample-table th {
-    background: #f9fafb;
-    font-weight: 600;
-    color: #374151;
-  }
-  
+
+  /* Button Styles */
   .btn {
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
@@ -165,17 +383,189 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     text-decoration: none;
+    font-size: 1rem;
   }
-  
+
   .btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
   }
-  
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b46c1 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
   .btn-secondary {
     background: #f8fafc;
     color: #4b5563;
     border: 2px solid #e2e8f0;
   }
+
+  .btn-secondary:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #475569;
+    text-decoration: none;
+  }
+
+  .btn-icon {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .import-form-container {
+      padding: 1rem;
+    }
+
+    .instruction-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .file-upload-area {
+      padding: 2rem 1rem;
+    }
+
+    .upload-actions {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .upload-actions .btn {
+      width: 100%;
+      text-align: center;
+    }
+  }
 </style>
+
+<script>
+// SIMPLE & RELIABLE JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Simple Import Form Initialized');
+  
+  // Get elements
+  const fileInput = document.getElementById('csv-file-input');
+  const browseBtn = document.getElementById('browse-btn');
+  const uploadArea = document.getElementById('file-upload-area');
+  const uploadContent = document.getElementById('upload-content');
+  const fileInfo = document.getElementById('file-info');
+  const fileName = document.getElementById('file-name');
+  const fileSize = document.getElementById('file-size');
+  const removeBtn = document.getElementById('remove-file-btn');
+  const uploadSubmit = document.getElementById('upload-submit');
+  const downloadTemplate = document.getElementById('download-template');
+  
+  // RELIABLE Browse Button Click
+  browseBtn.addEventListener('click', function() {
+    console.log('📂 Browse button clicked');
+    fileInput.click();
+  });
+  
+  // File Selection Handler
+  fileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    console.log('📁 File selected:', file ? file.name : 'none');
+    
+    if (file) {
+      if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+        showFileInfo(file);
+      } else {
+        alert('Please select a CSV file.');
+        e.target.value = '';
+      }
+    }
+  });
+  
+  // Show file information
+  function showFileInfo(file) {
+    fileName.textContent = file.name;
+    fileSize.textContent = formatFileSize(file.size);
+    uploadContent.style.display = 'none';
+    fileInfo.style.display = 'flex';
+    uploadSubmit.disabled = false;
+    uploadSubmit.innerHTML = '<span class="btn-icon">🔍</span> Preview Import';
+    console.log('✅ File info displayed:', file.name);
+  }
+  
+  // Remove file
+  removeBtn.addEventListener('click', function() {
+    fileInput.value = '';
+    fileInfo.style.display = 'none';
+    uploadContent.style.display = 'flex';
+    uploadSubmit.disabled = true;
+    uploadSubmit.innerHTML = '<span class="btn-icon">🔍</span> Preview Import';
+    console.log('🗑️ File removed');
+  });
+  
+  // Drag and Drop (bonus functionality)
+  uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('dragover');
+  });
+  
+  uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+  });
+  
+  uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+        fileInput.files = files;
+        showFileInfo(file);
+      } else {
+        alert('Please drop a CSV file.');
+      }
+    }
+  });
+  
+  // Format file size
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+  
+  // Download template
+  downloadTemplate.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    const csvContent = [
+      'Name,Title,Department,Salary,Hours,Phone,Email,Hire Date,Employment Type,Status',
+      'John Doe,Software Engineer,Engineering,75000,40,(555) 123-4567,john.doe@company.com,2024-01-15,W2,Active',
+      'Jane Smith,Project Manager,Operations,65000,40,(555) 987-6543,jane.smith@company.com,2024-02-01,W2,Active',
+      'Bob Johnson,Contractor,Consulting,45,40,(555) 456-7890,bob.johnson@consultant.com,2024-03-01,1099,Active'
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'employee_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    console.log('📄 Template downloaded');
+  });
+  
+  console.log('✅ Import Form Ready');
+});
+</script>
