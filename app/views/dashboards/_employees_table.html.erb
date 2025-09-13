@@ -1,4 +1,4 @@
-<!-- app/views/dashboards/_employees_table.html.erb -->
+<!-- app/views/dashboards/_employees_table.html.erb - Enhanced with Warning Indicators -->
 <% if employees.any? %>
   <div class="table-container">
     <table class="employee-table">
@@ -9,19 +9,85 @@
           <th class="th-hours">Hours</th>
           <th class="th-salary">Salary</th>
           <th class="th-pay">Pay</th>
+          <th class="th-status">Status</th>
           <th class="th-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         <% employees.each do |employee| %>
-          <tr>
+          <tr class="employee-row <%= 'has-missing-data' if employee.respond_to?(:has_missing_required_data?) && employee.has_missing_required_data? %>">
             <td class="td-name">
-              <%= link_to employee.name, employee_path(employee), class: 'employee-name-link' %>
+              <div class="employee-name-container">
+                <%= link_to employee.name, employee_path(employee), class: 'employee-name-link' %>
+                <% if employee.respond_to?(:has_missing_required_data?) && employee.has_missing_required_data? %>
+                  <span class="data-warning-indicator" 
+                        title="<%= employee.respond_to?(:missing_data_warning) ? employee.missing_data_warning : 'Missing required data' %>"
+                        data-tooltip="<%= employee.respond_to?(:missing_data_warning) ? employee.missing_data_warning : 'Missing required data' %>">
+                    ⚠️
+                  </span>
+                <% end %>
+              </div>
             </td>
-            <td class="td-title"><%= employee.title || 'Not specified' %></td>
-            <td class="td-hours"><%= number_with_precision(employee.hours_worked, precision: 1) %></td>
-            <td class="td-salary">$<%= number_with_delimiter(employee.salary) %></td>
-            <td class="td-pay">$<%= number_with_delimiter(employee.calculate_pay.round(2)) %></td>
+            <td class="td-title">
+              <div class="title-container">
+                <%= employee.title || 'Not specified' %>
+                <% if employee.title.blank? %>
+                  <span class="missing-field-indicator" title="Title not provided">📝</span>
+                <% end %>
+              </div>
+            </td>
+            <td class="td-hours">
+              <div class="hours-container">
+                <% if employee.hours_worked.present? %>
+                  <%= number_with_precision(employee.hours_worked, precision: 1) %>
+                <% else %>
+                  <span class="missing-value">
+                    <span class="missing-field-indicator" title="Hours not provided">⏰</span>
+                    Not set
+                  </span>
+                <% end %>
+              </div>
+            </td>
+            <td class="td-salary">
+              <div class="salary-container">
+                <% if employee.salary.present? %>
+                  $<%= number_with_delimiter(employee.salary) %>
+                <% else %>
+                  <span class="missing-value">
+                    <span class="missing-field-indicator" title="Salary not provided">💰</span>
+                    Not set
+                  </span>
+                <% end %>
+              </div>
+            </td>
+            <td class="td-pay">
+              <div class="pay-container">
+                <% if employee.respond_to?(:calculate_pay) %>
+                  <% pay = employee.calculate_pay %>
+                  <% if pay > 0 %>
+                    $<%= number_with_delimiter(pay.round(2)) %>
+                  <% else %>
+                    <span class="missing-value">Cannot calculate</span>
+                  <% end %>
+                <% else %>
+                  $0.00
+                <% end %>
+              </div>
+            </td>
+            <td class="td-status">
+              <div class="status-container">
+                <span class="status-badge <%= employee.status || 'active' %>">
+                  <%= (employee.status || 'active').titleize %>
+                </span>
+                <% if employee.respond_to?(:data_completion_percentage) %>
+                  <div class="completion-indicator">
+                    <span class="completion-percentage" title="Data completion: <%= employee.data_completion_percentage %>%">
+                      <%= employee.data_completion_percentage %>%
+                    </span>
+                  </div>
+                <% end %>
+              </div>
+            </td>
             <td class="td-actions">
               <div class="action-buttons">
                 <%= link_to 'Edit', edit_employee_path(employee, return_to: request.fullpath), class: 'btn-edit' %>
@@ -34,6 +100,35 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Data Completion Summary -->
+  <% if employees.any? { |e| e.respond_to?(:has_missing_required_data?) } %>
+    <div class="data-completion-summary">
+      <% 
+        total_employees = employees.count
+        incomplete_employees = employees.select { |e| e.respond_to?(:has_missing_required_data?) && e.has_missing_required_data? }
+        complete_employees = total_employees - incomplete_employees.count
+      %>
+      <div class="completion-stats">
+        <div class="completion-stat complete">
+          <span class="stat-icon">✅</span>
+          <span class="stat-label">Complete:</span>
+          <span class="stat-value"><%= complete_employees %></span>
+        </div>
+        <div class="completion-stat incomplete">
+          <span class="stat-icon">⚠️</span>
+          <span class="stat-label">Need Attention:</span>
+          <span class="stat-value"><%= incomplete_employees.count %></span>
+        </div>
+        <% if incomplete_employees.any? %>
+          <div class="completion-actions">
+            <span class="help-text">Employees with incomplete data may have payroll issues</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
 <% else %>
   <div class="empty-state">
     <% if defined?(has_filters) && has_filters %>
@@ -50,3 +145,196 @@
     <% end %>
   </div>
 <% end %>
+
+<style>
+  /* Enhanced Employee Table Styles with Warning Indicators */
+  .employee-row.has-missing-data {
+    background: linear-gradient(90deg, #fef3c7 0%, #ffffff 10%);
+    border-left: 3px solid #f59e0b;
+  }
+
+  .employee-name-container,
+  .title-container,
+  .hours-container,
+  .salary-container,
+  .pay-container,
+  .status-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .data-warning-indicator {
+    font-size: 1.1rem;
+    cursor: help;
+    animation: pulse 2s infinite;
+  }
+
+  .missing-field-indicator {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    cursor: help;
+  }
+
+  .missing-value {
+    color: #f59e0b;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+  }
+
+  .completion-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 0.25rem;
+  }
+
+  .completion-percentage {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 10px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-weight: 500;
+    cursor: help;
+  }
+
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* Data Completion Summary */
+  .data-completion-summary {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .completion-stats {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .completion-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .completion-stat.complete .stat-icon {
+    color: #10b981;
+  }
+
+  .completion-stat.incomplete .stat-icon {
+    color: #f59e0b;
+  }
+
+  .stat-label {
+    font-weight: 500;
+    color: #4b5563;
+  }
+
+  .stat-value {
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .completion-actions {
+    margin-left: auto;
+  }
+
+  .help-text {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-style: italic;
+  }
+
+  /* Pulse animation for warnings */
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* Tooltip styles */
+  [data-tooltip] {
+    position: relative;
+  }
+
+  [data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 5px;
+  }
+
+  [data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1f2937;
+    z-index: 1000;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .completion-stats {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .completion-actions {
+      margin-left: 0;
+      margin-top: 0.5rem;
+    }
+
+    .employee-name-container,
+    .title-container,
+    .hours-container,
+    .salary-container,
+    .pay-container,
+    .status-container {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+</style>

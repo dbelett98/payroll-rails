@@ -139,6 +139,51 @@ class Employee < ApplicationRecord
     []
   end
   
+  # ===== SCOPES =====
+  scope :active, -> { where(status: 'active') }
+  scope :inactive, -> { where(status: 'inactive') }
+  scope :w2_employees, -> { where(employment_type: 'W2') }
+  scope :contractors, -> { where(employment_type: '1099') }
+  scope :by_department, ->(dept) { where(department: dept) }
+  scope :by_pay_frequency, ->(freq) { where(pay_frequency: freq) }
+  scope :by_status, ->(status) { where(status: status) }
+  
+  # NEW: Scope for incomplete employees
+  scope :incomplete, -> { 
+    where(
+      'salary IS NULL OR hours_worked IS NULL OR hire_date IS NULL OR ssn IS NULL OR (phone IS NULL AND email IS NULL)'
+    )
+  }
+  
+  scope :complete, -> {
+    where.not(
+      'salary IS NULL OR hours_worked IS NULL OR hire_date IS NULL OR ssn IS NULL OR (phone IS NULL AND email IS NULL)'
+    )
+  }
+
+  # ===== INSTANCE METHODS =====
+  
+  # Enhanced payroll calculation method
+  def calculate_pay
+    return 0 if salary.blank? || hours_worked.blank?
+
+    if employment_type == '1099'
+      # 1099 contractors - simple hourly calculation
+      hourly_rate = calculate_hourly_rate
+      (hours_worked * hourly_rate).round(2)
+    else
+      # W2 employees - calculate with overtime
+      regular_hours = [hours_worked, 40].min
+      overtime_hours = [hours_worked - 40, 0].max
+      hourly_rate = calculate_hourly_rate
+      
+      regular_pay = regular_hours * hourly_rate
+      overtime_pay = overtime_hours * (hourly_rate * 1.5)
+      
+      (regular_pay + overtime_pay).round(2)
+    end
+  end
+
   def missing_tax_fields
     TAX_REQUIRED_FIELDS.select { |field| send(field).blank? }
   end
