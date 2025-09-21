@@ -1,0 +1,159 @@
+<div class="dashboard-wrapper">
+  <!-- Header with Client Selection -->
+  <div class="client-bar">
+    <%= form_with url: payroll_runs_path, method: :get, local: true, class: "client-form" do |f| %>
+      <%= f.select :client_id, 
+          options_for_select(@clients.map { |c| [c.name, c.id] }, @selected_client&.id),
+          { prompt: "All Clients" },
+          { class: "client-select", onchange: "this.form.submit();" } %>
+    <% end %>
+  
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <% if @selected_client %>
+        <%= link_to new_payroll_run_path(client_id: @selected_client.id), class: 'btn btn-primary' do %>
+          <span class="btn-icon">+</span> New Payroll Run
+        <% end %>
+      <% end %>
+      
+      <%= link_to dashboard_path, class: 'btn btn-secondary' do %>
+        <span class="btn-icon">←</span> Back to Dashboard
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="dashboard-grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <h2>Payroll Overview</h2>
+      </div>
+      <div class="card-body">
+        <div class="overview-stats">
+          <div class="stat-item">
+            <span class="stat-label">Total Runs</span>
+            <span class="stat-value"><%= @total_runs %></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Pending Approval</span>
+            <span class="stat-value"><%= @pending_approval %></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Processed</span>
+            <span class="stat-value"><%= @processed_runs %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payroll Runs Table -->
+  <div class="employee-section">
+    <div class="section-header">
+      <h2 class="section-title">
+        <span class="section-icon">💰</span>
+        Payroll Runs
+        <% if @selected_client %>
+          <span class="client-indicator">- <%= @selected_client.name %></span>
+        <% end %>
+      </h2>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="import-controls">
+      <%= form_with url: payroll_runs_path, method: :get, local: false, class: "employee-search-form", id: "payroll-filter-form" do |f| %>
+        <%= f.hidden_field :client_id, value: @selected_client&.id %>
+        
+        <div class="filter-row">
+          <div class="search-group">
+            <%= f.text_field :search, 
+                placeholder: "Search payroll runs...", 
+                value: params[:search], 
+                class: "search-input" %>
+          </div>
+          
+          <div class="filter-group">
+            <%= f.select :status, 
+                options_for_select([
+                  ['All Statuses', ''],
+                  ['Draft', 'draft'],
+                  ['Review', 'review'], 
+                  ['Approved', 'approved'],
+                  ['Processed', 'processed'],
+                  ['Voided', 'voided']
+                ], params[:status]), 
+                {}, 
+                { class: "filter-select" } %>
+          </div>
+          
+          <div class="filter-group">
+            <%= f.select :pay_frequency,
+                options_for_select([
+                  ['All Frequencies', ''],
+                  ['Weekly', 'weekly'],
+                  ['Bi-weekly', 'biweekly'],
+                  ['Monthly', 'monthly']
+                ], params[:pay_frequency]),
+                {},
+                { class: "filter-select" } %>
+          </div>
+          
+          <div class="action-group">
+            <%= f.submit 'Filter', class: 'btn btn-primary btn-filter' %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Payroll Runs Table -->
+    <div id="payroll-runs-table-container">
+      <%= render 'payroll_runs_table', payroll_runs: @payroll_runs %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .client-indicator {
+    font-size: 1rem;
+    color: #667eea;
+    font-weight: normal;
+  }
+  
+  .payroll-run-row:hover {
+    background: #f9fafb;
+    cursor: pointer;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-draft {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  
+  .status-review {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  
+  .status-approved {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  
+  .status-processed {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  
+  .status-voided {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+</style>

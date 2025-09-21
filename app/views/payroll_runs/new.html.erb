@@ -1,0 +1,146 @@
+<!-- New Payroll Run Modal -->
+<div class="modal-overlay" onclick="closeModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Create New Payroll Run - <%= @client.name %></h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+
+    <!-- Display validation errors -->
+    <% if @payroll_run.errors.any? %>
+      <div class="error-container">
+        <h4><%= pluralize(@payroll_run.errors.count, "error") %> prohibited this payroll run from being saved:</h4>
+        <ul>
+          <% @payroll_run.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form_with model: @payroll_run, local: true, class: "employee-form" do |form| %>
+      <%= form.hidden_field :client_id, value: @client.id %>
+      
+      <!-- Basic Information Tab -->
+      <div class="tab-content active" data-tab="basic">
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :name, "Payroll Run Name", class: "form-label" %>
+            <%= form.text_field :name, class: "form-input", placeholder: "e.g., Weekly Payroll - Sept 2025" %>
+          </div>
+          <div class="form-group">
+            <%= form.label :pay_frequency, "Pay Frequency *", class: "form-label" %>
+            <%= form.select :pay_frequency, 
+                options_for_select([
+                  ['Weekly', 'weekly'],
+                  ['Bi-weekly', 'biweekly'],
+                  ['Semi-monthly', 'semimonthly'],
+                  ['Monthly', 'monthly']
+                ], @payroll_run.pay_frequency), 
+                { }, 
+                { class: "form-input", required: true, onchange: "updatePayPeriod()" } %>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :run_date, "Run Date *", class: "form-label" %>
+            <%= form.date_field :run_date, class: "form-input", required: true, onchange: "updatePayPeriod()" %>
+          </div>
+        </div>
+
+        <div class="form-section-header">Pay Period</div>
+        <div class="form-row">
+          <div class="form-group">
+            <%= form.label :pay_period_start, "Period Start *", class: "form-label" %>
+            <%= form.date_field :pay_period_start, class: "form-input", required: true %>
+          </div>
+          <div class="form-group">
+            <%= form.label :pay_period_end, "Period End *", class: "form-label" %>
+            <%= form.date_field :pay_period_end, class: "form-input", required: true %>
+          </div>
+        </div>
+
+        <div class="form-group full-width">
+          <%= form.label :description, "Description", class: "form-label" %>
+          <%= form.text_area :description, rows: 3, class: "form-input", 
+              placeholder: "Optional notes about this payroll run..." %>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <%= form.submit 'Create Payroll Run', class: "btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+function closeModal() {
+  const clientId = '<%= @client.id %>';
+  window.location.href = `/payroll_runs?client_id=${clientId}`;
+}
+
+// Auto-calculate pay period when frequency or run date changes
+function updatePayPeriod() {
+  const frequency = document.querySelector('[name="payroll_run[pay_frequency]"]').value;
+  const runDate = new Date(document.querySelector('[name="payroll_run[run_date]"]').value);
+  
+  if (!frequency || !runDate || isNaN(runDate)) return;
+  
+  let startDate, endDate;
+  
+  switch(frequency) {
+    case 'weekly':
+      // Monday to Sunday
+      const dayOfWeek = runDate.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      startDate = new Date(runDate);
+      startDate.setDate(runDate.getDate() + mondayOffset);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+      
+    case 'biweekly':
+      // Two weeks ending on run date
+      endDate = new Date(runDate);
+      startDate = new Date(runDate);
+      startDate.setDate(runDate.getDate() - 13);
+      break;
+      
+    case 'monthly':
+      // First to last day of month
+      startDate = new Date(runDate.getFullYear(), runDate.getMonth(), 1);
+      endDate = new Date(runDate.getFullYear(), runDate.getMonth() + 1, 0);
+      break;
+      
+    case 'semimonthly':
+      // 1st-15th or 16th-end of month
+      if (runDate.getDate() <= 15) {
+        startDate = new Date(runDate.getFullYear(), runDate.getMonth(), 1);
+        endDate = new Date(runDate.getFullYear(), runDate.getMonth(), 15);
+      } else {
+        startDate = new Date(runDate.getFullYear(), runDate.getMonth(), 16);
+        endDate = new Date(runDate.getFullYear(), runDate.getMonth() + 1, 0);
+      }
+      break;
+  }
+  
+  if (startDate && endDate) {
+    document.querySelector('[name="payroll_run[pay_period_start]"]').value = startDate.toISOString().split('T')[0];
+    document.querySelector('[name="payroll_run[pay_period_end]"]').value = endDate.toISOString().split('T')[0];
+  }
+}
+
+// Auto-calculate on page load
+document.addEventListener('DOMContentLoaded', function() {
+  updatePayPeriod();
+  
+  // Focus on first input
+  const firstInput = document.querySelector('.form-input');
+  if (firstInput) {
+    firstInput.focus();
+  }
+});
+</script>
