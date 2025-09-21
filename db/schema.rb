@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_08_28_013739) do
+ActiveRecord::Schema[7.1].define(version: 2025_09_21_193312) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -86,7 +86,20 @@ ActiveRecord::Schema[7.1].define(version: 2025_08_28_013739) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "employee_id"
+    t.date "pay_period_start"
+    t.date "pay_period_end"
+    t.string "pay_frequency"
+    t.datetime "status_changed_at"
+    t.string "status_changed_by"
+    t.text "notes"
+    t.string "name"
+    t.text "description"
+    t.index ["client_id", "status"], name: "index_payroll_runs_on_client_id_and_status"
     t.index ["client_id"], name: "index_payroll_runs_on_client_id"
+    t.index ["pay_frequency"], name: "index_payroll_runs_on_pay_frequency"
+    t.index ["pay_period_end"], name: "index_payroll_runs_on_pay_period_end"
+    t.index ["pay_period_start"], name: "index_payroll_runs_on_pay_period_start"
+    t.index ["status"], name: "index_payroll_runs_on_status"
   end
 
   create_table "users", force: :cascade do |t|
