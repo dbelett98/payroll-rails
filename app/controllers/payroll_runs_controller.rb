@@ -49,6 +49,11 @@ class PayrollRunsController < ApplicationController
 
   # GET /payroll_runs/new
   def new
+    puts "=== DEBUG: New action ==="
+    puts "Client ID param: #{params[:client_id]}"
+    puts "Client object: #{@client.inspect}"
+    puts "Client employees count: #{@client&.employees&.count}"
+    
     @payroll_run = @client.payroll_runs.build
     @payroll_run.run_date = Date.current
     @payroll_run.pay_frequency = 'biweekly'

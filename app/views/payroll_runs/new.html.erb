@@ -126,12 +126,21 @@
             </div>
             
             <div class="employee-grid">
-              <% @client.employees.active.each do |employee| %>
+              <!-- DEBUG: Add this temporarily -->
+              <p>Debug: Client ID = <%= @client.id %></p>
+              <p>Debug: Total employees = <%= @client.employees.count %></p>
+              <p>Debug: Active employees = <%= @client.employees.where(status: 'active').count %></p>
+              <p>Debug: All statuses = <%= @client.employees.pluck(:status).uniq.inspect %></p>
+              <% @client.employees.each do |employee| %>
                 <div class="employee-card" 
                      data-name="<%= employee.name.downcase %>"
                      data-department="<%= employee.department %>"
                      data-frequency="<%= employee.pay_frequency %>"
                      data-status="<%= employee.status %>">
+                     <!-- DEBUG: Add this temporarily -->
+                    <p style="font-size: 10px; color: red;">
+                      <%= employee.name %> - Status: "<%= employee.status %>" - Active?: <%= employee.status == 'active' %>
+                    </p>
                   <label class="employee-checkbox-label">
                     <input type="checkbox" 
                            name="payroll_run[employee_ids][]" 
