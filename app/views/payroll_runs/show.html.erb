@@ -1,0 +1,122 @@
+<div class="dashboard-wrapper">
+  <!-- Header -->
+  <div class="client-bar">
+    <div class="payroll-run-header">
+      <h1 class="payroll-run-title">
+        <%= @payroll_run.name.present? ? @payroll_run.name : "Payroll Run ##{@payroll_run.id}" %>
+      </h1>
+      <div class="payroll-run-meta">
+        <span class="client-name"><%= @payroll_run.client.name %></span>
+        <span class="pay-period"><%= @payroll_run.pay_period_display %></span>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <%= link_to payroll_runs_path(client_id: @payroll_run.client.id), class: 'btn btn-secondary' do %>
+        <span class="btn-icon">←</span> Back to Payroll Runs
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Status and Info Cards -->
+  <div class="dashboard-grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <h2>Run Summary</h2>
+      </div>
+      <div class="card-body">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">Status</span>
+            <span class="status-badge <%= @payroll_run.status_badge_class %>">
+              <%= @payroll_run.status&.titleize %>
+            </span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Pay Frequency</span>
+            <span class="summary-value"><%= @payroll_run.pay_frequency&.titleize %></span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Run Date</span>
+            <span class="summary-value"><%= @payroll_run.run_date&.strftime('%B %d, %Y') %></span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Employees</span>
+            <span class="summary-value">0 (Employee selection coming in next step)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coming Soon Message -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">👥</span>
+      <h2>Employee Selection</h2>
+    </div>
+    <div class="card-body">
+      <p>✅ <strong>Step O2 Complete!</strong> Basic payroll run creation works.</p>
+      <p>🚀 <strong>Next:</strong> Employee selection system will be added to let you choose which employees to include in this payroll run.</p>
+      <p>📝 <strong>Details:</strong> <%= @payroll_run.description %></p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .payroll-run-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .payroll-run-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+  }
+  
+  .payroll-run-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+  
+  .client-name {
+    font-weight: 600;
+    color: #667eea;
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+  
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  .summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .summary-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  
+  .summary-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+</style>

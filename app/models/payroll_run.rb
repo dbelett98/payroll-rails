@@ -89,6 +89,27 @@ class PayrollRun < ApplicationRecord
     )
   end
   
+  # Add this method inside your PayrollRun class
+
+  def status_badge_class
+    case status
+    when 'draft' then 'status-draft'
+    when 'review' then 'status-review'
+    when 'approved' then 'status-approved'
+    when 'processed' then 'status-processed'
+    when 'voided' then 'status-voided'
+    else 'status-draft'
+    end
+  end
+
+  def pay_period_display
+    if pay_period_start && pay_period_end
+      "#{pay_period_start.strftime('%m/%d/%Y')} - #{pay_period_end.strftime('%m/%d/%Y')}"
+    else
+      'Date range not set'
+    end
+  end
+
   def self.calculate_pay_period(frequency, run_date)
     case frequency
     when 'weekly'

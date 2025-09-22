@@ -14,6 +14,10 @@
       </button>
       
       <% if @selected_client %>
+        <%= link_to payroll_runs_path(client_id: @selected_client.id), class: 'btn btn-primary' do %>
+          <span class="btn-icon">💰</span> Payroll Runs
+        <% end %>
+        
         <%= link_to import_form_employees_path(client_id: @selected_client.id), class: 'btn btn-primary' do %>
           <span class="btn-icon">📊</span> Import Employees
         <% end %>

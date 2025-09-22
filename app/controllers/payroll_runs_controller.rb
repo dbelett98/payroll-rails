@@ -24,7 +24,7 @@ class PayrollRunsController < ApplicationController
     # Counts for dashboard
     @total_runs = @payroll_runs.count
     @pending_approval = @payroll_runs.where(status: ['draft', 'review']).count
-    @processed_runs = @payroll_runs.processed.count
+    @processed_runs = @payroll_runs.where(status: 'processed').count
     
     respond_to do |format|
       format.html
@@ -143,7 +143,7 @@ class PayrollRunsController < ApplicationController
   end
   
   # PATCH /payroll_runs/:id/process
-  def process
+  def mark_as_processed
     if @payroll_run.transition_to!('processed', current_user)
       # TODO: In Step O4, this will generate PayrollEntry records
       redirect_to @payroll_run, notice: 'Payroll run processed successfully.'
@@ -179,8 +179,9 @@ class PayrollRunsController < ApplicationController
   end
   
   def set_client
-    if params[:client_id].present?
-      @client = current_user.clients.find(params[:client_id])
+    client_id = params[:client_id] || params.dig(:payroll_run, :client_id)
+    if client_id.present?
+      @client = current_user.clients.find(client_id)
     end
   rescue ActiveRecord::RecordNotFound
     redirect_to dashboard_path, alert: 'Client not found.'

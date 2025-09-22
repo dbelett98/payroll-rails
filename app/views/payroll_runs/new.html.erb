@@ -1,9 +1,19 @@
-<!-- New Payroll Run Modal -->
+<!-- Enhanced New Payroll Run Modal with Employee Selection -->
 <div class="modal-overlay" onclick="closeModal()">
-  <div class="modal-content" onclick="event.stopPropagation()">
+  <div class="modal-content large-modal" onclick="event.stopPropagation()">
     <div class="modal-header">
       <h2>Create New Payroll Run - <%= @client.name %></h2>
       <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button class="tab-button active" onclick="showTab('basic')" data-tab="basic">
+        Basic Info
+      </button>
+      <button class="tab-button" onclick="showTab('employees')" data-tab="employees">
+        Select Employees
+      </button>
     </div>
 
     <!-- Display validation errors -->
@@ -38,7 +48,7 @@
                   ['Monthly', 'monthly']
                 ], @payroll_run.pay_frequency), 
                 { }, 
-                { class: "form-input", required: true, onchange: "updatePayPeriod()" } %>
+                { class: "form-input", required: true, onchange: "updatePayPeriod(); filterEmployeesByFrequency();" } %>
           </div>
         </div>
 
@@ -68,15 +78,158 @@
         </div>
       </div>
 
+      <!-- Employee Selection Tab -->
+      <div class="tab-content" data-tab="employees">
+        <div class="employee-selection-section">
+          <!-- Employee Filters -->
+          <div class="employee-filters">
+            <div class="filter-row">
+              <div class="search-group">
+                <input type="text" id="employee-search" placeholder="Search employees..." 
+                       class="search-input" onkeyup="filterEmployees()">
+              </div>
+              
+              <div class="filter-group">
+                <select id="department-filter" class="filter-select" onchange="filterEmployees()">
+                  <option value="">All Departments</option>
+                  <% @client.employees.distinct.pluck(:department).compact.each do |dept| %>
+                    <option value="<%= dept %>"><%= dept %></option>
+                  <% end %>
+                </select>
+              </div>
+              
+              <div class="filter-group">
+                <select id="status-filter" class="filter-select" onchange="filterEmployees()">
+                  <option value="">All Status</option>
+                  <option value="active">Active Only</option>
+                  <option value="inactive">Inactive Only</option>
+                </select>
+              </div>
+              
+              <div class="action-group">
+                <button type="button" class="btn btn-secondary" onclick="selectAllEmployees()">
+                  Select All
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearAllEmployees()">
+                  Clear All
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Employee Selection List -->
+          <div class="employee-selection-list">
+            <div class="selection-header">
+              <span class="selected-count">
+                <span id="selected-count">0</span> employees selected
+              </span>
+            </div>
+            
+            <div class="employee-grid">
+              <% @client.employees.active.each do |employee| %>
+                <div class="employee-card" 
+                     data-name="<%= employee.name.downcase %>"
+                     data-department="<%= employee.department %>"
+                     data-frequency="<%= employee.pay_frequency %>"
+                     data-status="<%= employee.status %>">
+                  <label class="employee-checkbox-label">
+                    <input type="checkbox" 
+                           name="payroll_run[employee_ids][]" 
+                           value="<%= employee.id %>"
+                           class="employee-checkbox"
+                           onchange="updateSelectedCount()">
+                    
+                    <div class="employee-info">
+                      <div class="employee-name"><%= employee.name %></div>
+                      <div class="employee-details">
+                        <span class="department"><%= employee.department || 'No Department' %></span>
+                        <span class="frequency"><%= employee.pay_frequency&.titleize || 'Not Set' %></span>
+                        <span class="status <%= employee.status&.downcase %>">
+                          <%= employee.status&.titleize || 'Active' %>
+                        </span>
+                      </div>
+                      <div class="employee-pay">
+                        <% if employee.employment_type == 'hourly' %>
+                          $<%= number_with_precision(employee.hourly_rate || 0, precision: 2) %>/hr
+                        <% else %>
+                          $<%= number_with_delimiter(employee.salary || 0) %>/year
+                        <% end %>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-        <%= form.submit 'Create Payroll Run', class: "btn-primary" %>
+        <button type="button" class="btn-secondary" onclick="previousTab()" id="prev-btn" style="display: none;">
+          Previous
+        </button>
+        <button type="button" class="btn-primary" onclick="nextTab()" id="next-btn">
+          Next: Select Employees
+        </button>
+        <%= form.submit 'Create Payroll Run', class: "btn-primary", id: "submit-btn", style: "display: none;" %>
       </div>
     <% end %>
   </div>
 </div>
 
 <script>
+let currentTab = 'basic';
+
+function showTab(tabName) {
+  // Hide all tabs
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Hide all tab buttons
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // Show selected tab
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+  document.querySelector(`[data-tab="${tabName}"].tab-button`).classList.add('active');
+  
+  currentTab = tabName;
+  updateNavigationButtons();
+}
+
+function updateNavigationButtons() {
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const submitBtn = document.getElementById('submit-btn');
+  
+  if (currentTab === 'basic') {
+    prevBtn.style.display = 'none';
+    nextBtn.style.display = 'inline-block';
+    nextBtn.textContent = 'Next: Select Employees';
+    submitBtn.style.display = 'none';
+  } else if (currentTab === 'employees') {
+    prevBtn.style.display = 'inline-block';
+    nextBtn.style.display = 'none';
+    submitBtn.style.display = 'inline-block';
+  }
+}
+
+function nextTab() {
+  if (currentTab === 'basic') {
+    showTab('employees');
+    filterEmployeesByFrequency();
+  }
+}
+
+function previousTab() {
+  if (currentTab === 'employees') {
+    showTab('basic');
+  }
+}
+
 function closeModal() {
   const clientId = '<%= @client.id %>';
   window.location.href = `/payroll_runs?client_id=${clientId}`;
@@ -93,7 +246,6 @@ function updatePayPeriod() {
   
   switch(frequency) {
     case 'weekly':
-      // Monday to Sunday
       const dayOfWeek = runDate.getDay();
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       startDate = new Date(runDate);
@@ -103,20 +255,17 @@ function updatePayPeriod() {
       break;
       
     case 'biweekly':
-      // Two weeks ending on run date
       endDate = new Date(runDate);
       startDate = new Date(runDate);
       startDate.setDate(runDate.getDate() - 13);
       break;
       
     case 'monthly':
-      // First to last day of month
       startDate = new Date(runDate.getFullYear(), runDate.getMonth(), 1);
       endDate = new Date(runDate.getFullYear(), runDate.getMonth() + 1, 0);
       break;
       
     case 'semimonthly':
-      // 1st-15th or 16th-end of month
       if (runDate.getDate() <= 15) {
         startDate = new Date(runDate.getFullYear(), runDate.getMonth(), 1);
         endDate = new Date(runDate.getFullYear(), runDate.getMonth(), 15);
@@ -133,9 +282,79 @@ function updatePayPeriod() {
   }
 }
 
-// Auto-calculate on page load
+// Filter employees by pay frequency
+function filterEmployeesByFrequency() {
+  const selectedFrequency = document.querySelector('[name="payroll_run[pay_frequency]"]').value;
+  const employeeCards = document.querySelectorAll('.employee-card');
+  
+  employeeCards.forEach(card => {
+    const employeeFrequency = card.dataset.frequency;
+    if (!selectedFrequency || employeeFrequency === selectedFrequency || !employeeFrequency) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+      // Uncheck hidden employees
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      if (checkbox) checkbox.checked = false;
+    }
+  });
+  
+  updateSelectedCount();
+  filterEmployees(); // Apply other filters
+}
+
+// Filter employees by search and other criteria
+function filterEmployees() {
+  const searchTerm = document.getElementById('employee-search').value.toLowerCase();
+  const departmentFilter = document.getElementById('department-filter').value;
+  const statusFilter = document.getElementById('status-filter').value;
+  
+  document.querySelectorAll('.employee-card').forEach(card => {
+    const name = card.dataset.name;
+    const department = card.dataset.department;
+    const status = card.dataset.status;
+    
+    const matchesSearch = !searchTerm || name.includes(searchTerm);
+    const matchesDepartment = !departmentFilter || department === departmentFilter;
+    const matchesStatus = !statusFilter || status === statusFilter;
+    const isFrequencyVisible = card.style.display !== 'none';
+    
+    if (matchesSearch && matchesDepartment && matchesStatus && isFrequencyVisible) {
+      card.classList.remove('hidden');
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+}
+
+// Select all visible employees
+function selectAllEmployees() {
+  document.querySelectorAll('.employee-card:not(.hidden)').forEach(card => {
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    if (checkbox) checkbox.checked = true;
+  });
+  updateSelectedCount();
+}
+
+// Clear all employee selections
+function clearAllEmployees() {
+  document.querySelectorAll('.employee-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  updateSelectedCount();
+}
+
+// Update selected employee count
+function updateSelectedCount() {
+  const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+  document.getElementById('selected-count').textContent = checkedBoxes.length;
+}
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
   updatePayPeriod();
+  updateSelectedCount();
+  updateNavigationButtons();
   
   // Focus on first input
   const firstInput = document.querySelector('.form-input');
