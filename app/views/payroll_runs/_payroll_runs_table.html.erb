@@ -1,11 +1,12 @@
 <% if payroll_runs.any? %>
   <div class="table-container">
-    <table class="employee-table">
+    <table class="employee-table payroll-runs-table">
       <thead>
         <tr>
           <th class="th-name">Name / Period</th>
           <th class="th-client">Client</th>
           <th class="th-frequency">Frequency</th>
+          <th class="th-employees">Employees</th>
           <th class="th-status">Status</th>
           <th class="th-totals">Totals</th>
           <th class="th-dates">Run Date</th>
@@ -14,39 +15,75 @@
       </thead>
       <tbody>
         <% payroll_runs.each do |payroll_run| %>
-          <tr class="payroll-run-row" onclick="window.location.href='<%= payroll_run_path(payroll_run) %>'">
+          <tr class="payroll-run-row" onclick="window.location.href='<%= payroll_run_path(payroll_run) %>'" style="cursor: pointer;">
             <td class="td-name">
               <div class="payroll-run-info">
                 <div class="payroll-run-name">
-                  <%= payroll_run.name.present? ? payroll_run.name : "Payroll Run ##{payroll_run.id}" %>
+                  <%= payroll_run.display_name %>
                 </div>
                 <div class="pay-period">
                   <%= payroll_run.pay_period_display %>
                 </div>
+                <% if payroll_run.description.present? %>
+                  <div class="payroll-description">
+                    <%= truncate(payroll_run.description, length: 50) %>
+                  </div>
+                <% end %>
               </div>
             </td>
             <td class="td-client">
-              <%= payroll_run.client.name %>
+              <div class="client-info">
+                <%= payroll_run.client.name %>
+              </div>
             </td>
             <td class="td-frequency">
-              <span class="frequency-badge">
-                <%= payroll_run.pay_frequency&.titleize || 'Not Set' %>
+              <span class="frequency-badge <%= payroll_run.pay_frequency&.downcase %>">
+                <%= payroll_run.frequency_display %>
               </span>
+            </td>
+            <td class="td-employees">
+              <div class="employee-count-info">
+                <div class="employee-count">
+                  <%= payroll_run.employee_count %>
+                  <%= 'employee'.pluralize(payroll_run.employee_count) %>
+                </div>
+                <% if payroll_run.total_hours > 0 %>
+                  <div class="total-hours">
+                    <%= number_with_precision(payroll_run.total_hours, precision: 1) %> hours
+                  </div>
+                <% end %>
+              </div>
             </td>
             <td class="td-status">
               <span class="status-badge <%= payroll_run.status_badge_class %>">
-                <%= payroll_run.status&.titleize %>
+                <%= payroll_run.status_display %>
               </span>
+              <% if payroll_run.status_changed_at %>
+                <div class="status-timestamp">
+                  <%= payroll_run.status_changed_at.strftime('%m/%d %I:%M%p') %>
+                </div>
+              <% end %>
             </td>
             <td class="td-totals">
-              <div class="totals-info">
-                <div class="gross-pay">
-                  Gross: <%= number_to_currency(payroll_run.total_gross || 0) %>
+              <% if payroll_run.employee_count > 0 %>
+                <div class="totals-info">
+                  <div class="gross-pay">
+                    Gross: $<%= number_with_delimiter(payroll_run.total_gross.round(2)) %>
+                  </div>
+                  <div class="net-pay">
+                    Net: $<%= number_with_delimiter(payroll_run.total_net.round(2)) %>
+                  </div>
+                  <% if payroll_run.total_taxes > 0 %>
+                    <div class="deductions">
+                      Deductions: $<%= number_with_delimiter(payroll_run.total_taxes.round(2)) %>
+                    </div>
+                  <% end %>
                 </div>
-                <div class="net-pay">
-                  Net: <%= number_to_currency(payroll_run.total_net || 0) %>
+              <% else %>
+                <div class="no-data">
+                  No employees
                 </div>
-              </div>
+              <% end %>
             </td>
             <td class="td-dates">
               <div class="date-info">
@@ -54,19 +91,48 @@
                   <%= payroll_run.run_date&.strftime('%m/%d/%Y') || 'Not Set' %>
                 </div>
                 <div class="created-date">
-                  Created: <%= payroll_run.created_at.strftime('%m/%d') %>
+                  Created: <%= payroll_run.created_at.strftime('%m/%d/%y') %>
                 </div>
+                <% if payroll_run.status_changed_by.present? %>
+                  <div class="changed-by">
+                    by <%= payroll_run.status_changed_by.split('@').first %>
+                  </div>
+                <% end %>
               </div>
             </td>
             <td class="td-actions">
               <div class="action-buttons" onclick="event.stopPropagation();">
-                <%= link_to 'View', payroll_run_path(payroll_run), class: 'btn-edit' %>
+                <%= link_to 'View', payroll_run_path(payroll_run), class: 'btn-view' %>
                 <% if payroll_run.editable? %>
                   <%= link_to 'Edit', edit_payroll_run_path(payroll_run), class: 'btn-edit' %>
                 <% end %>
+                
+                <!-- Status Actions -->
                 <% if payroll_run.draft? %>
-                  <%= button_to "Delete", payroll_run_path(payroll_run), method: :delete, 
-                      data: { confirm: "Are you sure?" }, class: "btn-delete" %>
+                  <%= link_to submit_for_review_payroll_run_path(payroll_run), method: :patch, class: 'btn-action review-btn', title: 'Submit for Review' do %>
+                    📤
+                  <% end %>
+                <% elsif payroll_run.review? %>
+                  <%= link_to approve_payroll_run_path(payroll_run), method: :patch, class: 'btn-action approve-btn', title: 'Approve' do %>
+                    ✅
+                  <% end %>
+                <% elsif payroll_run.approved? %>
+                  <%= link_to mark_as_processed_payroll_run_path(payroll_run), method: :patch, class: 'btn-action process-btn', title: 'Process' do %>
+                    ⚡
+                  <% end %>
+                <% end %>
+                
+                <% if payroll_run.draft? %>
+                  <%= button_to payroll_run_path(payroll_run), method: :delete, 
+                      data: { confirm: "Are you sure you want to delete this payroll run?" }, 
+                      class: "btn-delete", 
+                      title: "Delete" do %>
+                    🗑️
+                  <% end %>
+                <% elsif payroll_run.processed? %>
+                  <%= link_to void_payroll_run_path(payroll_run), method: :patch, class: 'btn-action void-btn', title: 'Void', data: { confirm: 'Are you sure you want to void this payroll run?' } do %>
+                    ❌
+                  <% end %>
                 <% end %>
               </div>
             </td>
@@ -75,18 +141,55 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Summary Statistics -->
+  <div class="table-summary">
+    <div class="summary-stats">
+      <div class="stat-item">
+        <span class="stat-label">Total Runs:</span>
+        <span class="stat-value"><%= payroll_runs.count %></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Employees:</span>
+        <span class="stat-value"><%= payroll_runs.sum(&:employee_count) %></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Gross:</span>
+        <span class="stat-value gross">$<%= number_with_delimiter(payroll_runs.sum(&:total_gross).round(2)) %></span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Net:</span>
+        <span class="stat-value net">$<%= number_with_delimiter(payroll_runs.sum(&:total_net).round(2)) %></span>
+      </div>
+    </div>
+  </div>
+
 <% else %>
   <div class="empty-state">
-    <p>No payroll runs found.</p>
-    <% if @selected_client %>
-      <%= link_to 'Create First Payroll Run', new_payroll_run_path(client_id: @selected_client.id), class: 'action-btn primary-btn' %>
+    <div class="empty-icon">💰</div>
+    <h3>No Payroll Runs Found</h3>
+    <% if defined?(@selected_client) && @selected_client %>
+      <p>No payroll runs have been created for <strong><%= @selected_client.name %></strong> yet.</p>
+      <%= link_to new_payroll_run_path(client_id: @selected_client.id), class: 'action-btn primary-btn' do %>
+        <span class="btn-icon">+</span> Create First Payroll Run
+      <% end %>
     <% else %>
-      <p>Select a client above to create payroll runs.</p>
+      <p>No payroll runs found. Select a client above to view or create payroll runs.</p>
     <% end %>
   </div>
 <% end %>
 
 <style>
+  .payroll-runs-table {
+    /* Enhance the existing employee table for payroll runs */
+  }
+  
+  .payroll-run-row:hover {
+    background: #f8fafc;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
   .payroll-run-info {
     display: flex;
     flex-direction: column;
@@ -96,11 +199,23 @@
   .payroll-run-name {
     font-weight: 600;
     color: #1f2937;
+    font-size: 0.95rem;
   }
   
   .pay-period {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #6b7280;
+  }
+  
+  .payroll-description {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-style: italic;
+  }
+  
+  .client-info {
+    font-weight: 500;
+    color: #667eea;
   }
   
   .frequency-badge {
@@ -108,14 +223,57 @@
     color: #4b5563;
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
+    text-transform: uppercase;
+  }
+  
+  .frequency-badge.weekly {
+    background: #ddd6fe;
+    color: #5b21b6;
+  }
+  
+  .frequency-badge.biweekly {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  
+  .frequency-badge.monthly {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  
+  .frequency-badge.semimonthly {
+    background: #fed7d7;
+    color: #c53030;
+  }
+  
+  .employee-count-info {
+    text-align: center;
+  }
+  
+  .employee-count {
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  .total-hours {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+  
+  .status-timestamp {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
   }
   
   .totals-info {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    font-size: 0.85rem;
   }
   
   .gross-pay {
@@ -124,14 +282,27 @@
   }
   
   .net-pay {
+    font-weight: 500;
+    color: #2563eb;
+  }
+  
+  .deductions {
+    font-size: 0.75rem;
+    color: #dc2626;
+  }
+  
+  .no-data {
+    color: #9ca3af;
+    font-style: italic;
     font-size: 0.85rem;
-    color: #6b7280;
+    text-align: center;
   }
   
   .date-info {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    font-size: 0.8rem;
   }
   
   .run-date {
@@ -140,16 +311,264 @@
   }
   
   .created-date {
-    font-size: 0.8rem;
-    color: #9ca3af;
+    color: #6b7280;
   }
   
-  /* Column widths */
-  .th-name, .td-name { width: 25%; }
-  .th-client, .td-client { width: 15%; }
-  .th-frequency, .td-frequency { width: 12%; }
+  .changed-by {
+    color: #9ca3af;
+    font-size: 0.7rem;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .btn-view,
+  .btn-edit,
+  .btn-action {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-view {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  
+  .btn-view:hover {
+    background: #d1d5db;
+    color: #1f2937;
+  }
+  
+  .btn-edit {
+    background: #10b981;
+    color: white;
+  }
+  
+  .btn-edit:hover {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+  
+  .btn-action {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+  
+  .review-btn {
+    background: #fbbf24;
+    color: white;
+  }
+  
+  .review-btn:hover {
+    background: #f59e0b;
+  }
+  
+  .approve-btn {
+    background: #10b981;
+    color: white;
+  }
+  
+  .approve-btn:hover {
+    background: #059669;
+  }
+  
+  .process-btn {
+    background: #3b82f6;
+    color: white;
+  }
+  
+  .process-btn:hover {
+    background: #2563eb;
+  }
+  
+  .void-btn {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .void-btn:hover {
+    background: #dc2626;
+  }
+  
+  .btn-delete {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 0.25rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-delete:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+  }
+  
+  .table-summary {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .summary-stats {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+  }
+  
+  .stat-value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+  
+  .stat-value.gross {
+    color: #059669;
+  }
+  
+  .stat-value.net {
+    color: #2563eb;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+  }
+  
+  .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-state h3 {
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+  
+  .empty-state p {
+    margin-bottom: 1.5rem;
+  }
+  
+  .action-btn.primary-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .action-btn.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+  
+  .btn-icon {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  /* Column widths for payroll runs table */
+  .th-name, .td-name { width: 22%; }
+  .th-client, .td-client { width: 12%; }
+  .th-frequency, .td-frequency { width: 10%; }
+  .th-employees, .td-employees { width: 10%; }
   .th-status, .td-status { width: 12%; }
-  .th-totals, .td-totals { width: 15%; }
-  .th-dates, .td-dates { width: 12%; }
-  .th-actions, .td-actions { width: 9%; }
+  .th-totals, .td-totals { width: 18%; }
+  .th-dates, .td-dates { width: 10%; }
+  .th-actions, .td-actions { width: 6%; }
+  
+  /* Status badge styles */
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-draft {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  
+  .status-review {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  
+  .status-approved {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  
+  .status-processed {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  
+  .status-voided {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .table-container {
+      overflow-x: auto;
+    }
+    
+    .action-buttons {
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+    
+    .summary-stats {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
 </style>

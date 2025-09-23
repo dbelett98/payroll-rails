@@ -1,3 +1,4 @@
+# app/controllers/payroll_runs_controller.rb - Enhanced for Employee Selection
 class PayrollRunsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_payroll_run, only: [:show, :edit, :update, :destroy]
@@ -64,21 +65,61 @@ class PayrollRunsController < ApplicationController
     @payroll_run.pay_period_end = end_date
   end
 
-  # POST /payroll_runs
+  # POST /payroll_runs - ENHANCED FOR EMPLOYEE SELECTION
   def create
     @payroll_run = @client.payroll_runs.build(payroll_run_params)
     @payroll_run.status_changed_by = current_user.email
     
     puts "=== DEBUG: PayrollRun Create ==="
     puts "Permitted params: #{payroll_run_params.inspect}"
+    puts "Employee IDs param: #{params[:payroll_run][:employee_ids].inspect}"
     
-    if @payroll_run.save
-      puts "✅ SUCCESS: PayrollRun created successfully"
-      redirect_to payroll_run_path(@payroll_run), notice: 'Payroll run created successfully.'
-    else
-      puts "❌ FAILED: Create errors: #{@payroll_run.errors.full_messages}"
+    # Validate employee selection
+    employee_ids = params[:payroll_run][:employee_ids]&.reject(&:blank?) || []
+    
+    if employee_ids.empty?
+      @payroll_run.errors.add(:base, "Please select at least one employee for this payroll run")
       render :new, status: :unprocessable_entity
+      return
     end
+    
+    # Start transaction to ensure data consistency
+    ActiveRecord::Base.transaction do
+      if @payroll_run.save
+        puts "✅ PayrollRun saved successfully, creating PayrollEntry records..."
+        
+        # Create PayrollEntry records for selected employees
+        success_count = 0
+        employee_ids.each do |employee_id|
+          next if employee_id.blank?
+          
+          employee = @client.employees.find_by(id: employee_id)
+          if employee
+            payroll_entry = @payroll_run.payroll_entries.create!(
+              employee: employee,
+              gross_pay: employee.calculate_pay,
+              net_pay: employee.calculate_pay, # Will be enhanced in Step O4
+              hours_worked: employee.hours_worked || 0,
+              pay_rate: employee.salary || 0
+            )
+            success_count += 1
+            puts "✅ Created PayrollEntry for #{employee.name}"
+          else
+            puts "❌ Employee not found: #{employee_id}"
+          end
+        end
+        
+        puts "✅ SUCCESS: PayrollRun created with #{success_count} employees"
+        redirect_to payroll_run_path(@payroll_run), notice: "Payroll run created successfully with #{success_count} employees."
+      else
+        puts "❌ FAILED: Create errors: #{@payroll_run.errors.full_messages}"
+        raise ActiveRecord::Rollback
+      end
+    end
+  rescue => e
+    puts "❌ TRANSACTION FAILED: #{e.message}"
+    @payroll_run.errors.add(:base, "Error creating payroll run: #{e.message}")
+    render :new, status: :unprocessable_entity
   end
 
   # GET /payroll_runs/:id/edit

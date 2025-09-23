@@ -9,10 +9,11 @@
     <!-- Tab Navigation -->
     <div class="tab-navigation">
       <button class="tab-button active" onclick="showTab('basic')" data-tab="basic">
-        Basic Info
+        <span class="tab-icon">📋</span> Basic Info
       </button>
       <button class="tab-button" onclick="showTab('employees')" data-tab="employees">
-        Select Employees
+        <span class="tab-icon">👥</span> Select Employees
+        <span class="employee-badge" id="employee-badge" style="display: none;">0</span>
       </button>
     </div>
 
@@ -37,6 +38,7 @@
           <div class="form-group">
             <%= form.label :name, "Payroll Run Name", class: "form-label" %>
             <%= form.text_field :name, class: "form-input", placeholder: "e.g., Weekly Payroll - Sept 2025" %>
+            <small class="field-help">Leave blank for auto-generated name</small>
           </div>
           <div class="form-group">
             <%= form.label :pay_frequency, "Pay Frequency *", class: "form-label" %>
@@ -56,6 +58,7 @@
           <div class="form-group">
             <%= form.label :run_date, "Run Date *", class: "form-label" %>
             <%= form.date_field :run_date, class: "form-input", required: true, onchange: "updatePayPeriod()" %>
+            <small class="field-help">Date when payroll will be processed</small>
           </div>
         </div>
 
@@ -101,74 +104,122 @@
               <div class="filter-group">
                 <select id="status-filter" class="filter-select" onchange="filterEmployees()">
                   <option value="">All Status</option>
-                  <option value="active">Active Only</option>
+                  <option value="active" selected>Active Only</option>
                   <option value="inactive">Inactive Only</option>
                 </select>
               </div>
               
               <div class="action-group">
-                <button type="button" class="btn btn-secondary" onclick="selectAllEmployees()">
-                  Select All
+                <button type="button" class="btn btn-secondary" onclick="selectAllVisibleEmployees()">
+                  <span class="btn-icon">☑️</span> Select All
                 </button>
                 <button type="button" class="btn btn-secondary" onclick="clearAllEmployees()">
-                  Clear All
+                  <span class="btn-icon">⬜</span> Clear All
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Employee Selection List -->
-          <div class="employee-selection-list">
-            <div class="selection-header">
-              <span class="selected-count">
-                <span id="selected-count">0</span> employees selected
-              </span>
+          <!-- Selection Summary -->
+          <div class="selection-summary">
+            <div class="summary-stats">
+              <span id="selected-count-display">0</span> of 
+              <span id="visible-count-display">0</span> employees selected
+              <span class="total-count">(<%= @client.employees.count %> total)</span>
             </div>
-            
-            <div class="employee-grid">
-              <!-- DEBUG: Add this temporarily -->
-              <p>Debug: Client ID = <%= @client.id %></p>
-              <p>Debug: Total employees = <%= @client.employees.count %></p>
-              <p>Debug: Active employees = <%= @client.employees.where(status: 'active').count %></p>
-              <p>Debug: All statuses = <%= @client.employees.pluck(:status).uniq.inspect %></p>
-              <% @client.employees.each do |employee| %>
-                <div class="employee-card" 
-                     data-name="<%= employee.name.downcase %>"
-                     data-department="<%= employee.department %>"
-                     data-frequency="<%= employee.pay_frequency %>"
-                     data-status="<%= employee.status %>">
-                     <!-- DEBUG: Add this temporarily -->
-                    <p style="font-size: 10px; color: red;">
-                      <%= employee.name %> - Status: "<%= employee.status %>" - Active?: <%= employee.status == 'active' %>
-                    </p>
-                  <label class="employee-checkbox-label">
-                    <input type="checkbox" 
-                           name="payroll_run[employee_ids][]" 
-                           value="<%= employee.id %>"
-                           class="employee-checkbox"
-                           onchange="updateSelectedCount()">
-                    
-                    <div class="employee-info">
+            <div id="selection-warning" class="selection-warning" style="display: none;">
+              <span class="warning-icon">⚠️</span>
+              Please select at least one employee to continue
+            </div>
+          </div>
+
+          <!-- Employee Grid -->
+          <div class="employee-grid" id="employee-grid">
+            <% @client.employees.each do |employee| %>
+              <div class="employee-card" 
+                   data-name="<%= employee.name.downcase %>"
+                   data-department="<%= employee.department&.downcase || '' %>"
+                   data-frequency="<%= employee.pay_frequency&.downcase || '' %>"
+                   data-status="<%= employee.status&.downcase || 'active' %>"
+                   data-employee-id="<%= employee.id %>">
+                
+                <label class="employee-checkbox-label">
+                  <input type="checkbox" 
+                         name="payroll_run[employee_ids][]" 
+                         value="<%= employee.id %>"
+                         class="employee-checkbox"
+                         onchange="updateSelectedCount()"
+                         <% if employee.status != 'active' %>disabled<% end %>>
+                  
+                  <div class="employee-card-content">
+                    <div class="employee-header">
                       <div class="employee-name"><%= employee.name %></div>
-                      <div class="employee-details">
-                        <span class="department"><%= employee.department || 'No Department' %></span>
-                        <span class="frequency"><%= employee.pay_frequency&.titleize || 'Not Set' %></span>
-                        <span class="status <%= employee.status&.downcase %>">
+                      <div class="employee-status">
+                        <span class="status-badge <%= employee.status&.downcase || 'active' %>">
                           <%= employee.status&.titleize || 'Active' %>
                         </span>
                       </div>
-                      <div class="employee-pay">
-                        <% if employee.employment_type == 'hourly' %>
-                          $<%= number_with_precision(employee.hourly_rate || 0, precision: 2) %>/hr
+                    </div>
+                    
+                    <div class="employee-details">
+                      <div class="detail-row">
+                        <span class="detail-label">Title:</span>
+                        <span class="detail-value"><%= employee.title || 'No Title' %></span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">Department:</span>
+                        <span class="detail-value"><%= employee.department || 'No Department' %></span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">Pay Frequency:</span>
+                        <span class="detail-value">
+                          <span class="frequency-badge <%= employee.pay_frequency&.downcase || 'none' %>">
+                            <%= employee.pay_frequency&.titleize || 'Not Set' %>
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div class="employee-pay-info">
+                      <div class="pay-amount">
+                        <% if employee.employment_type == '1099' %>
+                          $<%= number_with_precision(employee.calculate_hourly_rate, precision: 2) %>/hr
                         <% else %>
                           $<%= number_with_delimiter(employee.salary || 0) %>/year
                         <% end %>
                       </div>
+                      <div class="current-pay">
+                        Current: $<%= number_with_delimiter(employee.calculate_pay.round(2)) %>
+                      </div>
                     </div>
-                  </label>
-                </div>
-              <% end %>
-            </div>
+
+                    <!-- Frequency Mismatch Warning -->
+                    <div class="frequency-warning" style="display: none;">
+                      <span class="warning-icon">⚠️</span>
+                      Pay frequency doesn't match selected frequency
+                    </div>
+
+                    <!-- Inactive Employee Notice -->
+                    <% unless employee.status == 'active' %>
+                      <div class="inactive-notice">
+                        <span class="warning-icon">⚠️</span>
+                        Inactive employee - cannot be selected
+                      </div>
+                    <% end %>
+                  </div>
+                </label>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- No Employees Message -->
+          <div id="no-employees-message" class="no-employees" style="display: none;">
+            <div class="empty-icon">👥</div>
+            <h3>No employees match your filters</h3>
+            <p>Try adjusting your search criteria or filters</p>
+            <button type="button" class="btn btn-secondary" onclick="clearFilters()">
+              Clear Filters
+            </button>
           </div>
         </div>
       </div>
@@ -176,19 +227,353 @@
       <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
         <button type="button" class="btn-secondary" onclick="previousTab()" id="prev-btn" style="display: none;">
-          Previous
+          <span class="btn-icon">←</span> Previous
         </button>
         <button type="button" class="btn-primary" onclick="nextTab()" id="next-btn">
-          Next: Select Employees
+          Next: Select Employees <span class="btn-icon">→</span>
         </button>
-        <%= form.submit 'Create Payroll Run', class: "btn-primary", id: "submit-btn", style: "display: none;" %>
+        <%= form.submit 'Create Payroll Run', class: "btn-primary", id: "submit-btn", style: "display: none;", onclick: "return validateForm()" %>
       </div>
     <% end %>
   </div>
 </div>
 
+<style>
+  .large-modal {
+    max-width: 1000px;
+    width: 95%;
+  }
+  
+  .tab-navigation {
+    display: flex;
+    background: #f8fafc;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    margin-bottom: 0;
+  }
+  
+  .tab-button {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .tab-button:hover {
+    background: #e2e8f0;
+    color: #475569;
+  }
+  
+  .tab-button.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+  }
+  
+  .tab-icon {
+    font-size: 1.1rem;
+  }
+  
+  .employee-badge {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+  }
+  
+  .field-help {
+    color: #6b7280;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+  }
+  
+  .employee-filters {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .selection-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .summary-stats {
+    font-weight: 600;
+    color: #374151;
+  }
+  
+  .total-count {
+    color: #6b7280;
+    font-weight: normal;
+  }
+  
+  .selection-warning {
+    color: #dc2626;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .warning-icon {
+    font-size: 1.1rem;
+  }
+  
+  .employee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+  
+  .employee-card {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .employee-card:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+  }
+  
+  .employee-card.selected {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  }
+  
+  .employee-card.frequency-mismatch {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+  }
+  
+  .employee-card.inactive {
+    border-color: #d1d5db;
+    background: #f9fafb;
+    opacity: 0.6;
+  }
+  
+  .employee-card.hidden {
+    display: none;
+  }
+  
+  .employee-checkbox-label {
+    display: block;
+    cursor: pointer;
+    padding: 1rem;
+  }
+  
+  .employee-checkbox-label input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+  }
+  
+  .employee-checkbox {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+  
+  .employee-card-content {
+    padding-right: 2rem;
+  }
+  
+  .employee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+  
+  .employee-name {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 1rem;
+  }
+  
+  .employee-details {
+    margin-bottom: 0.75rem;
+  }
+  
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+  
+  .detail-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  
+  .detail-value {
+    font-size: 0.8rem;
+    color: #374151;
+  }
+  
+  .status-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  
+  .status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  
+  .frequency-badge {
+    padding: 0.125rem 0.375rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+  
+  .frequency-badge.weekly {
+    background: #ddd6fe;
+    color: #5b21b6;
+  }
+  
+  .frequency-badge.biweekly {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  
+  .frequency-badge.monthly {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  
+  .frequency-badge.semimonthly {
+    background: #fed7d7;
+    color: #c53030;
+  }
+  
+  .frequency-badge.none {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  
+  .employee-pay-info {
+    background: #f8fafc;
+    padding: 0.5rem;
+    border-radius: 4px;
+    text-align: center;
+  }
+  
+  .pay-amount {
+    font-weight: 600;
+    color: #059669;
+  }
+  
+  .current-pay {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+  
+  .frequency-warning,
+  .inactive-notice {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .inactive-notice {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  
+  .no-employees {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+  }
+  
+  .empty-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .no-employees h3 {
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .large-modal {
+      width: 98%;
+      margin: 1%;
+    }
+    
+    .employee-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .selection-summary {
+      flex-direction: column;
+      gap: 0.5rem;
+      text-align: center;
+    }
+    
+    .filter-row {
+      flex-direction: column;
+    }
+    
+    .filter-group,
+    .search-group {
+      min-width: auto;
+    }
+  }
+</style>
+
 <script>
 let currentTab = 'basic';
+let selectedEmployeeIds = new Set();
 
 function showTab(tabName) {
   // Hide all tabs
@@ -207,6 +592,14 @@ function showTab(tabName) {
   
   currentTab = tabName;
   updateNavigationButtons();
+  
+  // If switching to employees tab, apply initial filters
+  if (tabName === 'employees') {
+    setTimeout(() => {
+      filterEmployeesByFrequency();
+      filterEmployees();
+    }, 100);
+  }
 }
 
 function updateNavigationButtons() {
@@ -217,7 +610,7 @@ function updateNavigationButtons() {
   if (currentTab === 'basic') {
     prevBtn.style.display = 'none';
     nextBtn.style.display = 'inline-block';
-    nextBtn.textContent = 'Next: Select Employees';
+    nextBtn.innerHTML = 'Next: Select Employees <span class="btn-icon">→</span>';
     submitBtn.style.display = 'none';
   } else if (currentTab === 'employees') {
     prevBtn.style.display = 'inline-block';
@@ -229,7 +622,6 @@ function updateNavigationButtons() {
 function nextTab() {
   if (currentTab === 'basic') {
     showTab('employees');
-    filterEmployeesByFrequency();
   }
 }
 
@@ -247,7 +639,8 @@ function closeModal() {
 // Auto-calculate pay period when frequency or run date changes
 function updatePayPeriod() {
   const frequency = document.querySelector('[name="payroll_run[pay_frequency]"]').value;
-  const runDate = new Date(document.querySelector('[name="payroll_run[run_date]"]').value);
+  const runDateInput = document.querySelector('[name="payroll_run[run_date]"]');
+  const runDate = new Date(runDateInput.value);
   
   if (!frequency || !runDate || isNaN(runDate)) return;
   
@@ -291,32 +684,36 @@ function updatePayPeriod() {
   }
 }
 
-// Filter employees by pay frequency
+// Enhanced employee filtering
 function filterEmployeesByFrequency() {
   const selectedFrequency = document.querySelector('[name="payroll_run[pay_frequency]"]').value;
   const employeeCards = document.querySelectorAll('.employee-card');
   
+  console.log('Filtering by frequency:', selectedFrequency);
+  
   employeeCards.forEach(card => {
     const employeeFrequency = card.dataset.frequency;
-    if (!selectedFrequency || employeeFrequency === selectedFrequency || !employeeFrequency) {
-      card.style.display = 'block';
+    const frequencyWarning = card.querySelector('.frequency-warning');
+    
+    // Show/hide frequency mismatch warning
+    if (selectedFrequency && employeeFrequency && employeeFrequency !== selectedFrequency) {
+      card.classList.add('frequency-mismatch');
+      if (frequencyWarning) frequencyWarning.style.display = 'flex';
     } else {
-      card.style.display = 'none';
-      // Uncheck hidden employees
-      const checkbox = card.querySelector('input[type="checkbox"]');
-      if (checkbox) checkbox.checked = false;
+      card.classList.remove('frequency-mismatch');
+      if (frequencyWarning) frequencyWarning.style.display = 'none';
     }
   });
   
-  updateSelectedCount();
   filterEmployees(); // Apply other filters
 }
 
-// Filter employees by search and other criteria
 function filterEmployees() {
   const searchTerm = document.getElementById('employee-search').value.toLowerCase();
-  const departmentFilter = document.getElementById('department-filter').value;
-  const statusFilter = document.getElementById('status-filter').value;
+  const departmentFilter = document.getElementById('department-filter').value.toLowerCase();
+  const statusFilter = document.getElementById('status-filter').value.toLowerCase();
+  
+  let visibleCount = 0;
   
   document.querySelectorAll('.employee-card').forEach(card => {
     const name = card.dataset.name;
@@ -326,49 +723,142 @@ function filterEmployees() {
     const matchesSearch = !searchTerm || name.includes(searchTerm);
     const matchesDepartment = !departmentFilter || department === departmentFilter;
     const matchesStatus = !statusFilter || status === statusFilter;
-    const isFrequencyVisible = card.style.display !== 'none';
     
-    if (matchesSearch && matchesDepartment && matchesStatus && isFrequencyVisible) {
+    if (matchesSearch && matchesDepartment && matchesStatus) {
       card.classList.remove('hidden');
+      visibleCount++;
     } else {
       card.classList.add('hidden');
+      // Uncheck hidden employees
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      if (checkbox && checkbox.checked) {
+        checkbox.checked = false;
+        updateSelectedCount();
+      }
     }
   });
+  
+  // Show/hide no results message
+  const noEmployeesMessage = document.getElementById('no-employees-message');
+  if (visibleCount === 0) {
+    noEmployeesMessage.style.display = 'block';
+  } else {
+    noEmployeesMessage.style.display = 'none';
+  }
+  
+  updateVisibleCount();
 }
 
-// Select all visible employees
-function selectAllEmployees() {
+function clearFilters() {
+  document.getElementById('employee-search').value = '';
+  document.getElementById('department-filter').value = '';
+  document.getElementById('status-filter').value = 'active';
+  filterEmployees();
+}
+
+function selectAllVisibleEmployees() {
   document.querySelectorAll('.employee-card:not(.hidden)').forEach(card => {
-    const checkbox = card.querySelector('input[type="checkbox"]');
-    if (checkbox) checkbox.checked = true;
+    const checkbox = card.querySelector('input[type="checkbox"]:not(:disabled)');
+    if (checkbox) {
+      checkbox.checked = true;
+      card.classList.add('selected');
+    }
   });
   updateSelectedCount();
 }
 
-// Clear all employee selections
 function clearAllEmployees() {
   document.querySelectorAll('.employee-checkbox').forEach(checkbox => {
     checkbox.checked = false;
   });
+  document.querySelectorAll('.employee-card').forEach(card => {
+    card.classList.remove('selected');
+  });
   updateSelectedCount();
 }
 
-// Update selected employee count
 function updateSelectedCount() {
   const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
-  document.getElementById('selected-count').textContent = checkedBoxes.length;
+  const count = checkedBoxes.length;
+  
+  // Update displays
+  document.getElementById('selected-count-display').textContent = count;
+  
+  const badge = document.getElementById('employee-badge');
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+  
+  // Update card visual states
+  document.querySelectorAll('.employee-card').forEach(card => {
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    if (checkbox && checkbox.checked) {
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('selected');
+    }
+  });
+  
+  // Show/hide warning
+  const warning = document.getElementById('selection-warning');
+  if (count === 0 && currentTab === 'employees') {
+    warning.style.display = 'flex';
+  } else {
+    warning.style.display = 'none';
+  }
+  
+  // Update submit button
+  const submitBtn = document.getElementById('submit-btn');
+  if (count > 0) {
+    submitBtn.innerHTML = `Create Payroll Run (${count} employees)`;
+  } else {
+    submitBtn.innerHTML = 'Create Payroll Run';
+  }
+}
+
+function updateVisibleCount() {
+  const visibleCards = document.querySelectorAll('.employee-card:not(.hidden)').length;
+  document.getElementById('visible-count-display').textContent = visibleCards;
+}
+
+function validateForm() {
+  const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+  
+  if (checkedBoxes.length === 0) {
+    alert('Please select at least one employee for this payroll run.');
+    showTab('employees');
+    return false;
+  }
+  
+  return true;
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Enhanced Payroll Run Form Initialized');
+  
   updatePayPeriod();
   updateSelectedCount();
+  updateVisibleCount();
   updateNavigationButtons();
+  
+  // Set default status filter to active
+  document.getElementById('status-filter').value = 'active';
   
   // Focus on first input
   const firstInput = document.querySelector('.form-input');
   if (firstInput) {
     firstInput.focus();
   }
+  
+  // Apply initial employee filtering
+  setTimeout(() => {
+    filterEmployees();
+  }, 100);
+  
+  console.log('✅ Form ready');
 });
 </script>

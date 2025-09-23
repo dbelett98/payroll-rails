@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_09_21_193312) do
+ActiveRecord::Schema[7.1].define(version: 2025_09_23_180024) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -96,6 +96,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_09_21_193312) do
     t.text "description"
     t.index ["client_id", "status"], name: "index_payroll_runs_on_client_id_and_status"
     t.index ["client_id"], name: "index_payroll_runs_on_client_id"
+    t.index ["created_at"], name: "index_payroll_runs_on_created_at"
     t.index ["pay_frequency"], name: "index_payroll_runs_on_pay_frequency"
     t.index ["pay_period_end"], name: "index_payroll_runs_on_pay_period_end"
     t.index ["pay_period_start"], name: "index_payroll_runs_on_pay_period_start"
