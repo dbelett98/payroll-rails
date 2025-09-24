@@ -1,4 +1,4 @@
-# config/routes.rb: Enhanced routes for Step O completion
+# config/routes.rb: Fixed routes for Step O completion
 Rails.application.routes.draw do
   devise_for :users
   
@@ -15,12 +15,12 @@ Rails.application.routes.draw do
   
   resources :clients, only: [:index, :new, :create, :edit, :update, :destroy]
   
-  # ===== NEW: PayrollRuns Routes =====
+  # ===== FIXED: PayrollRuns Routes =====
   resources :payroll_runs do
     member do
       patch :submit_for_review
       patch :approve
-      patch :process
+      patch :mark_as_processed    # FIXED: Changed from :process to :mark_as_processed
       patch :void
       patch :return_to_draft
     end
