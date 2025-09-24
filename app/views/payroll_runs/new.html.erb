@@ -104,7 +104,7 @@
               <div class="filter-group">
                 <select id="status-filter" class="filter-select" onchange="filterEmployees()">
                   <option value="">All Status</option>
-                  <option value="active" selected>Active Only</option>
+                  <option value="active">Active Only</option>
                   <option value="inactive">Inactive Only</option>
                 </select>
               </div>
@@ -839,14 +839,16 @@ function validateForm() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Enhanced Payroll Run Form Initialized');
-  
+  console.log('📊 Total employee cards found:', document.querySelectorAll('.employee-card').length);
+
   updatePayPeriod();
   updateSelectedCount();
   updateVisibleCount();
   updateNavigationButtons();
   
   // Set default status filter to active
-  document.getElementById('status-filter').value = 'active';
+  // document.getElementById('status-filter').value = 'active';
+  console.log('📝 Not setting default status filter - showing all employees');
   
   // Focus on first input
   const firstInput = document.querySelector('.form-input');
@@ -862,3 +864,4 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ Form ready');
 });
 </script>
+

@@ -1,4 +1,4 @@
-# app/controllers/payroll_runs_controller.rb - Enhanced for Employee Selection
+# app/controllers/payroll_runs_controller.rb - Enhanced debugging for new action
 class PayrollRunsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_payroll_run, only: [:show, :edit, :update, :destroy]
@@ -48,12 +48,35 @@ class PayrollRunsController < ApplicationController
     @payroll_entries = @payroll_run.payroll_entries.includes(:employee)
   end
 
-  # GET /payroll_runs/new
+  # GET /payroll_runs/new - ENHANCED DEBUG
   def new
-    puts "=== DEBUG: New action ==="
+    puts "=== ENHANCED DEBUG: New action ==="
+    puts "Params: #{params.inspect}"
     puts "Client ID param: #{params[:client_id]}"
     puts "Client object: #{@client.inspect}"
     puts "Client employees count: #{@client&.employees&.count}"
+    
+    # ADDITIONAL DEBUG - Check if client has employees
+    if @client
+      puts "Client name: #{@client.name}"
+      puts "Client ID: #{@client.id}"
+      employees = @client.employees
+      puts "All employees for this client:"
+      employees.each_with_index do |emp, index|
+        puts "  #{index + 1}. #{emp.name} - Status: #{emp.status} - Department: #{emp.department}"
+      end
+      puts "Active employees: #{employees.where(status: 'active').count}"
+      puts "Inactive employees: #{employees.where(status: 'inactive').count}"
+    else
+      puts "❌ ERROR: @client is nil!"
+      puts "Available clients for current user: #{current_user.clients.pluck(:id, :name)}"
+    end
+    
+    # Redirect if no client
+    unless @client
+      redirect_to dashboard_path, alert: 'Please select a client first.'
+      return
+    end
     
     @payroll_run = @client.payroll_runs.build
     @payroll_run.run_date = Date.current
@@ -63,6 +86,9 @@ class PayrollRunsController < ApplicationController
     start_date, end_date = PayrollRun.calculate_pay_period('biweekly', Date.current)
     @payroll_run.pay_period_start = start_date
     @payroll_run.pay_period_end = end_date
+    
+    puts "✅ PayrollRun initialized: #{@payroll_run.inspect}"
+    puts "=== END DEBUG ==="
   end
 
   # POST /payroll_runs - ENHANCED FOR EMPLOYEE SELECTION
@@ -188,7 +214,7 @@ class PayrollRunsController < ApplicationController
     end
   end
   
-  # PATCH /payroll_runs/:id/process
+  # PATCH /payroll_runs/:id/mark_as_processed
   def mark_as_processed
     if @payroll_run.transition_to!('processed', current_user)
       # TODO: In Step O4, this will generate PayrollEntry records
@@ -209,7 +235,7 @@ class PayrollRunsController < ApplicationController
   
   # PATCH /payroll_runs/:id/return_to_draft
   def return_to_draft
-    if @payroll_run.transition_to!('draft', current_user)
+    if @payroll_run.transition_to!('drafted', current_user)
       redirect_to @payroll_run, notice: 'Payroll run returned to draft.'
     else
       redirect_to @payroll_run, alert: 'Could not return payroll run to draft.'
@@ -224,12 +250,20 @@ class PayrollRunsController < ApplicationController
     redirect_to payroll_runs_path, alert: 'Payroll run not found.'
   end
   
+  # ENHANCED: Better client setting with debugging
   def set_client
     client_id = params[:client_id] || params.dig(:payroll_run, :client_id)
+    puts "🔍 set_client called with client_id: #{client_id}"
+    
     if client_id.present?
       @client = current_user.clients.find(client_id)
+      puts "✅ Client found: #{@client.name} (ID: #{@client.id})"
+    else
+      puts "❌ No client_id provided in params"
+      puts "Available params: #{params.keys}"
     end
-  rescue ActiveRecord::RecordNotFound
+  rescue ActiveRecord::RecordNotFound => e
+    puts "❌ Client not found: #{e.message}"
     redirect_to dashboard_path, alert: 'Client not found.'
   end
 
