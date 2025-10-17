@@ -77,6 +77,17 @@ class PayrollEntry < ApplicationRecord
     [hours_worked - overtime_threshold, 0.0].max
   end
   
+  # Get the pay rate for this employee from the PayrollRun creation
+  def pay_rate
+    # For 1099 contractors, use their hourly rate
+    if employee&.employment_type == '1099'
+      employee.calculate_hourly_rate
+    else
+      # For W2 employees, use their annual salary
+      employee.salary || 0
+    end
+  end
+
   # Calculate hourly rate from annual salary
   def hourly_rate
     return pay_rate if employee&.employment_type == '1099'

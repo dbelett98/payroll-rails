@@ -576,28 +576,48 @@ let currentTab = 'basic';
 let selectedEmployeeIds = new Set();
 
 function showTab(tabName) {
-  // Hide all tabs
+  console.log('🎯 Switching to tab:', tabName); // Debug logging
+  
+  // Hide all tab contents - BE MORE SPECIFIC
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
+    console.log('Hiding tab content:', tab.dataset.tab);
   });
   
-  // Hide all tab buttons
+  // Hide all tab buttons - BE MORE SPECIFIC  
   document.querySelectorAll('.tab-button').forEach(btn => {
     btn.classList.remove('active');
+    console.log('Deactivating tab button:', btn.dataset.tab);
   });
   
-  // Show selected tab
-  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-  document.querySelector(`[data-tab="${tabName}"].tab-button`).classList.add('active');
+  // Show selected tab content - FIXED SELECTOR
+  const targetContent = document.querySelector(`.tab-content[data-tab="${tabName}"]`);
+  if (targetContent) {
+    targetContent.classList.add('active');
+    console.log('✅ Activated tab content:', tabName);
+  } else {
+    console.error('❌ Could not find tab content for:', tabName);
+  }
+  
+  // Show selected tab button - FIXED SELECTOR  
+  const targetButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+  if (targetButton) {
+    targetButton.classList.add('active');
+    console.log('✅ Activated tab button:', tabName);
+  } else {
+    console.error('❌ Could not find tab button for:', tabName);
+  }
   
   currentTab = tabName;
   updateNavigationButtons();
   
   // If switching to employees tab, apply initial filters
   if (tabName === 'employees') {
+    console.log('🔄 Applying employee filters...');
     setTimeout(() => {
       filterEmployeesByFrequency();
       filterEmployees();
+      console.log('✅ Employee filters applied');
     }, 100);
   }
 }

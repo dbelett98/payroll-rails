@@ -107,7 +107,7 @@
                   <%= link_to 'Edit', edit_payroll_run_path(payroll_run), class: 'btn-edit' %>
                 <% end %>
                 
-                <!-- Status Actions -->
+                <!-- Status Actions - FIXED: Using local variable payroll_run instead of @payroll_run -->
                 <% if payroll_run.draft? %>
                   <%= link_to submit_for_review_payroll_run_path(payroll_run), method: :patch, class: 'btn-action review-btn', title: 'Submit for Review' do %>
                     📤

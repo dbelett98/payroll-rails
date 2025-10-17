@@ -126,7 +126,6 @@ class PayrollRunsController < ApplicationController
               gross_pay: employee.calculate_pay,
               net_pay: employee.calculate_pay, # Will be enhanced in Step O4
               hours_worked: employee.hours_worked || 0,
-              pay_rate: employee.salary || 0
             )
             success_count += 1
             puts "✅ Created PayrollEntry for #{employee.name}"
