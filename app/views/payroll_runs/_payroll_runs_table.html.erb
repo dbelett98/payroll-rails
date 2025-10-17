@@ -109,15 +109,15 @@
                 
                 <!-- Status Actions - FIXED: Using local variable payroll_run instead of @payroll_run -->
                 <% if payroll_run.draft? %>
-                  <%= link_to submit_for_review_payroll_run_path(payroll_run), method: :patch, class: 'btn-action review-btn', title: 'Submit for Review' do %>
+                  <%= link_to submit_for_review_payroll_run_path(payroll_run), data: { turbo_method: :patch }, class: 'btn-action review-btn', title: 'Submit for Review' do %>
                     📤
                   <% end %>
                 <% elsif payroll_run.review? %>
-                  <%= link_to approve_payroll_run_path(payroll_run), method: :patch, class: 'btn-action approve-btn', title: 'Approve' do %>
+                  <%= link_to approve_payroll_run_path(payroll_run), data: { turbo_method: :patch }, class: 'btn-action approve-btn', title: 'Approve' do %>
                     ✅
                   <% end %>
                 <% elsif payroll_run.approved? %>
-                  <%= link_to mark_as_processed_payroll_run_path(payroll_run), method: :patch, class: 'btn-action process-btn', title: 'Process' do %>
+                  <%= link_to mark_as_processed_payroll_run_path(payroll_run), data: { turbo_method: :patch }, class: 'btn-action process-btn', title: 'Process' do %>
                     ⚡
                   <% end %>
                 <% end %>
@@ -130,7 +130,7 @@
                     🗑️
                   <% end %>
                 <% elsif payroll_run.processed? %>
-                  <%= link_to void_payroll_run_path(payroll_run), method: :patch, class: 'btn-action void-btn', title: 'Void', data: { confirm: 'Are you sure you want to void this payroll run?' } do %>
+                  <%= link_to void_payroll_run_path(payroll_run), data: { turbo_method: :patch, turbo_confirm: 'Are you sure you want to void this payroll run?' }, class: 'btn-action void-btn', title: 'Void' do %>
                     ❌
                   <% end %>
                 <% end %>
