@@ -107,17 +107,29 @@
                   <%= link_to 'Edit', edit_payroll_run_path(payroll_run), class: 'btn-edit' %>
                 <% end %>
                 
-                <!-- Status Actions - FIXED: Using local variable payroll_run instead of @payroll_run -->
+                <!-- Status Actions - FIXED: Using button_to for reliable PATCH requests -->
                 <% if payroll_run.draft? %>
-                  <%= link_to submit_for_review_payroll_run_path(payroll_run), data: { turbo_method: :patch }, class: 'btn-action review-btn', title: 'Submit for Review' do %>
+                  <%= button_to submit_for_review_payroll_run_path(payroll_run), 
+                      method: :patch, 
+                      class: 'btn-action review-btn', 
+                      title: 'Submit for Review',
+                      form_class: 'inline-form' do %>
                     📤
                   <% end %>
                 <% elsif payroll_run.review? %>
-                  <%= link_to approve_payroll_run_path(payroll_run), data: { turbo_method: :patch }, class: 'btn-action approve-btn', title: 'Approve' do %>
+                  <%= button_to approve_payroll_run_path(payroll_run), 
+                      method: :patch, 
+                      class: 'btn-action approve-btn', 
+                      title: 'Approve',
+                      form_class: 'inline-form' do %>
                     ✅
                   <% end %>
                 <% elsif payroll_run.approved? %>
-                  <%= link_to mark_as_processed_payroll_run_path(payroll_run), data: { turbo_method: :patch }, class: 'btn-action process-btn', title: 'Process' do %>
+                  <%= button_to mark_as_processed_payroll_run_path(payroll_run), 
+                      method: :patch, 
+                      class: 'btn-action process-btn', 
+                      title: 'Process',
+                      form_class: 'inline-form' do %>
                     ⚡
                   <% end %>
                 <% end %>
@@ -130,7 +142,12 @@
                     🗑️
                   <% end %>
                 <% elsif payroll_run.processed? %>
-                  <%= link_to void_payroll_run_path(payroll_run), data: { turbo_method: :patch, turbo_confirm: 'Are you sure you want to void this payroll run?' }, class: 'btn-action void-btn', title: 'Void' do %>
+                  <%= button_to void_payroll_run_path(payroll_run), 
+                      method: :patch, 
+                      class: 'btn-action void-btn', 
+                      title: 'Void',
+                      form_class: 'inline-form',
+                      data: { confirm: 'Are you sure you want to void this payroll run?' } do %>
                     ❌
                   <% end %>
                 <% end %>
@@ -553,6 +570,25 @@
   .status-voided {
     background: #fee2e2;
     color: #991b1b;
+  }
+  
+  /* ===== INLINE FORM STYLING FOR button_to ===== */
+  /* Make button_to forms display inline like links */
+  .inline-form {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Remove default form styling */
+  .inline-form button {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ensure buttons in action-buttons display properly */
+  .action-buttons .inline-form {
+    display: inline-flex;
   }
   
   /* Responsive design */

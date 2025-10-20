@@ -22,26 +22,30 @@
       <% end %>
       
       <% if @payroll_run.draft? %>
-        <%= link_to submit_for_review_payroll_run_path(@payroll_run), 
-            data: { turbo_method: :patch }, 
-            class: 'btn btn-success' do %>
+        <%= button_to submit_for_review_payroll_run_path(@payroll_run), 
+            method: :patch, 
+            class: 'btn btn-success',
+            form_class: 'inline-form' do %>
           <span class="btn-icon">📤</span> Submit for Review
         <% end %>
       <% elsif @payroll_run.review? %>
-        <%= link_to approve_payroll_run_path(@payroll_run), 
-            data: { turbo_method: :patch }, 
-            class: 'btn btn-success' do %>
+        <%= button_to approve_payroll_run_path(@payroll_run), 
+            method: :patch, 
+            class: 'btn btn-success',
+            form_class: 'inline-form' do %>
           <span class="btn-icon">✅</span> Approve
         <% end %>
-        <%= link_to return_to_draft_payroll_run_path(@payroll_run), 
-            data: { turbo_method: :patch }, 
-            class: 'btn btn-secondary' do %>
+        <%= button_to return_to_draft_payroll_run_path(@payroll_run), 
+            method: :patch, 
+            class: 'btn btn-secondary',
+            form_class: 'inline-form' do %>
           <span class="btn-icon">📝</span> Return to Draft
         <% end %>
       <% elsif @payroll_run.approved? %>
-        <%= link_to mark_as_processed_payroll_run_path(@payroll_run), 
-            data: { turbo_method: :patch }, 
-            class: 'btn btn-success' do %>
+        <%= button_to mark_as_processed_payroll_run_path(@payroll_run), 
+            method: :patch, 
+            class: 'btn btn-success',
+            form_class: 'inline-form' do %>
           <span class="btn-icon">⚡</span> Process Payroll
         <% end %>
       <% end %>
@@ -493,6 +497,22 @@
   .th-deductions, .td-deductions { width: 10%; }
   .th-net, .td-net { width: 12%; }
   .th-actions, .td-actions { width: 7%; }
+  
+  /* ===== INLINE FORM STYLING FOR button_to ===== */
+  .inline-form {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .inline-form button {
+    margin: 0;
+    padding: 0;
+  }
+
+  .header-actions .inline-form {
+    display: inline-flex;
+  }
   
   /* Responsive Design */
   @media (max-width: 768px) {
