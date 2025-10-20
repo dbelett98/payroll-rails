@@ -1,7 +1,7 @@
 # app/controllers/payroll_runs_controller.rb - Enhanced debugging for new action
 class PayrollRunsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_payroll_run, only: [:show, :edit, :update, :destroy]
+  before_action :set_payroll_run, only: [:show, :edit, :update, :destroy, :submit_for_review, :approve, :mark_as_processed, :void, :return_to_draft]
   before_action :set_client, only: [:index, :new, :create]
 
   # GET /payroll_runs
